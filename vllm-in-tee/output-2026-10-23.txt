@@ -1,0 +1,42 @@
+### in-vm-vllm.sh, run by deploy_and_attest.py over SSH on 2026-10-23 (times are UTC)
+[11:57:25] == GPU as seen from the guest
+name, driver_version, memory.total [MiB], memory.used [MiB]
+NVIDIA RTX PRO 6000 Blackwell Server Edition, 595.71.05, 97887 MiB, 0 MiB
+    CC State                   : ON
+    Multi-GPU Mode             : None
+    CC GPUs Ready State        : Ready
+[11:57:25] == waiting for the vLLM install (vllm-install.done)
+[11:57:25] vLLM install exit 0 after 0 s of waiting here
+vllm 0.32.0 | torch 2.13.0+cu130 | cuda 13.0 | NVIDIA RTX PRO 6000 Blackwell Server Edition
+[11:57:41] == vllm serve Qwen/Qwen2.5-0.5B-Instruct (model download, then startup)
+[12:12:27] vLLM did not come up within the budget: the queries below were NOT EXECUTED
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/vllm-venv/lib/python3.12/site-packages/vllm/entrypoints/launchers/api_server/entry.py", line 95, in build_async_engine_client_from_engine_args
+    async_llm = AsyncLLM.from_vllm_config(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/vllm-venv/lib/python3.12/site-packages/vllm/v1/engine/async_llm.py", line 255, in from_vllm_config
+    return cls(
+           ^^^^
+  File "/home/ubuntu/vllm-venv/lib/python3.12/site-packages/vllm/v1/engine/async_llm.py", line 184, in __init__
+    self.engine_core = EngineCoreClient.make_async_mp_client(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/vllm-venv/lib/python3.12/site-packages/vllm/tracing/otel.py", line 175, in sync_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/vllm-venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py", line 167, in make_async_mp_client
+    return AsyncMPClient(
+           ^^^^^^^^^^^^^^
+  File "/home/ubuntu/vllm-venv/lib/python3.12/site-packages/vllm/tracing/otel.py", line 175, in sync_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/vllm-venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py", line 1120, in __init__
+    super().__init__(
+  File "/home/ubuntu/vllm-venv/lib/python3.12/site-packages/vllm/v1/engine/core_client.py", line 682, in __init__
+    with launch_core_engines(
+  File "/usr/lib/python3.12/contextlib.py", line 144, in __exit__
+    next(self.gen)
+  File "/home/ubuntu/vllm-venv/lib/python3.12/site-packages/vllm/v1/engine/utils.py", line 1351, in launch_core_engines
+    wait_for_engine_startup(
+  File "/home/ubuntu/vllm-venv/lib/python3.12/site-packages/vllm/v1/engine/utils.py", line 1431, in wait_for_engine_startup
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}

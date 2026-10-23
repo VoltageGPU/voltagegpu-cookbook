@@ -1,0 +1,17 @@
+### python langchain_chat.py  (langchain-openai 1.7.2, langchain-core 1.7.0, Python 3.12.4, 2026-10-23T11:38Z)
+== invoke
+It ensures that sensitive model weights and user data remain encrypted and inaccessible to the cloud provider or unauthorized administrators.
+model: google/gemma-4-31B-turbo-TEE | usage: {'completion_tokens': 22, 'prompt_tokens': 36, 'total_tokens': 58, 'completion_tokens_details': None, 'prompt_tokens_details': {'audio_tokens': None, 'cache_write_tokens': None, 'cached_tokens': 5}, 'reasoning_tokens': 0, 'estimated_cost': 2.3e-05}
+
+== stream
+One, two, three, four, five.
+exit 0
+
+### python llamaindex_chat.py  (llama-index-core 0.14.25, llama-index-llms-openai-like 0.8.1, 2026-10-23T11:39Z)
+== chat
+It ensures that the model weights and user data remain encrypted and inaccessible to the cloud provider during processing.
+usage: 36 prompt + 21 completion tokens
+
+== stream_chat
+One, two, three, four, five.
+exit 0

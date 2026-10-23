@@ -1,0 +1,20 @@
+[PASS] manifest.format       manifest is well formed
+[PASS] manifest.commitments  bundle commitments match the manifest
+[FAIL] manifest.challenge    challenge differs from the one this verifier issued (replay or foreign bundle)
+[PASS] tdx.structure         TDX quote v4, TEE 0x81, 4940 bytes
+[PASS] tdx.debug             TD attributes 0000001000000000 (0x10000000), DEBUG (bit 0) off: not a debug TD
+[PASS] tdx.report_data       quote report_data equals SHA-512 of the manifest
+[PASS] tdx.signatures        attestation key, QE binding, QE report and PCK chain verify up to the pinned Intel SGX Root CA
+[PASS] tdx.collateral        TCB info and QE identity signed by Intel (bundle (fetched 2026-10-23T11:57:11+00:00))
+[PASS] tdx.tcb               platform TCB UpToDate, QE UpToDate, TDX_03 UpToDate
+[PASS] tdx.revocation        PCK certificate not revoked (57 entries in CRL)
+[PASS] tdx.revocation        PCK CA certificate not revoked (0 entries in CRL)
+[PASS] nvidia.signatures     2 NVIDIA-signed tokens verify, keys from the bundle chained to a pinned NRAS intermediate (offline)
+[PASS] nvidia.nonce          NRAS eat_nonce equals SHA-256 of the manifest
+[PASS] nvidia.policy         overall result true, every GPU: measurements ok, secure boot on, debug off, nonce matched, report signature and chain validated
+[PASS] nvidia.freshness      token issued 2s from bundle creation
+
+TDX: MRTD eea8b6a814569a52bd1e12f6b869bb2d...  TCB UpToDate  QE UpToDate
+GPU: GPU-0 GB20X driver 595.71.05 vbios 98.02.9E.00.01 measurements success
+
+RESULT: NOT VERIFIED (manifest.challenge)

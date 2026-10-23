@@ -1,0 +1,4 @@
+[11:56:33] prepare: Ubuntu 24.04.4 LTS, 32 vCPU, 121 GB RAM, disk 277G free
+[11:56:33] uv (fast installer for the venvs below)
+uv 0.13.5 (x86_64-unknown-linux-gnu)
+[11:56:34] background jobs started: vllm-install, host-install, tools-install (logs: *-install.log)

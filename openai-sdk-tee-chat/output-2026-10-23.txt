@@ -1,0 +1,62 @@
+### python chat.py  (openai 2.54.0, Python 3.12.4, Windows 11, 2026-10-23T11:48Z)
+== models
+Nemotron-3-Nano-Omni-30B-TEE                  available    $0.0453/M in, $0.1809/M out
+Qwen/Qwen3-235B-A22B-Thinking-2507-TEE        unavailable  $0.553/M in, $2.212/M out
+Qwen/Qwen3-32B-TEE                            available    $0.1924/M in, $0.7696/M out
+Qwen/Qwen3.5-397B-A17B-TEE                    available    $0.8325/M in, $5.55/M out
+Qwen/Qwen3.6-27B-TEE                          available    $0.4625/M in, $3.7/M out
+Qwen/Qwen3.8-27B-TEE                          available    $0.0722/M in, $2.3125/M out
+deepseek-ai/DeepSeek-V3.2-TEE                 available    $1.85/M in, $1.85/M out
+deepseek-ai/DeepSeek-V4-Flash-0731-TEE        available    $0.814/M in, $2.442/M out
+google/gemma-4-31B-turbo-TEE                  available    $0.222/M in, $0.6845/M out
+moonshotai/Kimi-K2.6-TEE                      available    $0.8325/M in, $3.6075/M out
+moonshotai/Kimi-K3-TEE                        available    $3.4225/M in, $17.575/M out
+unsloth/Mistral-Nemo-Instruct-2407-TEE        available    $0.0453/M in, $0.1809/M out
+zai-org/GLM-5.1-TEE                           available    $1.813/M in, $5.698/M out
+zai-org/GLM-5.2-TEE                           available    $2.3125/M in, $7.3075/M out
+
+== chat.completions.create (model google/gemma-4-31B-turbo-TEE)
+x-voltagegpu-model: google/gemma-4-31B-turbo-TEE
+x-voltagegpu-confidential: tee
+x-voltagegpu-retries: 0
+x-voltagegpu-cost-usd: 0.000025
+answer: A TEE protects sensitive data and code from being accessed or modified by the rest of the device's operating system.
+usage: 36 prompt + 25 completion tokens
+
+== streaming (model google/gemma-4-31B-turbo-TEE)
+One, two, three, four, five.
+exit 0
+
+### bash chat.sh  (curl 8.9.0, 2026-10-23T11:48Z)
+== GET /models (public): ids, live status
+Nemotron-3-Nano-Omni-30B-TEE available
+Qwen/Qwen3-235B-A22B-Thinking-2507-TEE unavailable
+Qwen/Qwen3-32B-TEE available
+Qwen/Qwen3.5-397B-A17B-TEE available
+Qwen/Qwen3.6-27B-TEE available
+Qwen/Qwen3.8-27B-TEE available
+deepseek-ai/DeepSeek-V3.2-TEE available
+deepseek-ai/DeepSeek-V4-Flash-0731-TEE available
+google/gemma-4-31B-turbo-TEE available
+moonshotai/Kimi-K2.6-TEE available
+moonshotai/Kimi-K3-TEE available
+unsloth/Mistral-Nemo-Instruct-2407-TEE available
+zai-org/GLM-5.1-TEE available
+zai-org/GLM-5.2-TEE available
+
+== POST /chat/completions, with the VoltageGPU response headers
+HTTP/1.1 200 OK
+X-Voltagegpu-Confidential: tee
+X-Voltagegpu-Cost-Usd: 0.000030
+X-Voltagegpu-Model: google/gemma-4-31B-turbo-TEE
+X-Voltagegpu-Retries: 0
+{"id":"feffddb2410f438fa1ee1cc30d933369","object":"chat.completion","created":1792756128,"model":"google/gemma-4-31B-turbo-TEE","choices":[{"index":0,"message":{"role":"assistant","content":"A TEE (Trusted Execution Environment) protects sensitive data and code by isolating them in a secure, private area of the processor that the rest of the system cannot access.","reasoning_content":null,"tool_calls":null},"logprobs":null,"finish_reason":"stop","matched_stop":106}],"usage":{"prompt_tokens":27,"total_tokens":62,"completion_tokens":35,"prompt_tokens_details":{"cached_tokens":4},"reasoning_tokens":0,"estimated_cost":0.00003},"metadata":{"weight_version":"default","weight_versions":[{"version":"default","start":0,"end":35}]}}
+
+== POST /chat/completions with stream: true (server-sent events, first chunks)
+data: {"id":"467f2b179c45439c99eb4047e6aedb19","object":"chat.completion.chunk","created":1792756135,"model":"google/gemma-4-31B-turbo-TEE","choices":[{"index":0,"delta":{"reasoning_content":null,"role":"assistant","content":""},"logprobs":null,"finish_reason":null,"matched_stop":null}]}
+
+data: {"id":"467f2b179c45439c99eb4047e6aedb19","object":"chat.completion.chunk","created":1792756135,"model":"google/gemma-4-31B-turbo-TEE","choices":[{"index":0,"delta":{"reasoning_content":null,"content":"One"},"logprobs":null,"finish_reason":null,"matched_stop":null}],"usage":{"prompt_tokens":24,"total_tokens":25,"completion_tokens":1,"prompt_tokens_details":{"cached_tokens":4},"reasoning_tokens":0}}
+
+data: {"id":"467f2b179c45439c99eb4047e6aedb19","object":"chat.completion.chunk","created":1792756135,"model":"google/gemma-4-31B-turbo-TEE","choices":[{"index":0,"delta":{"reasoning_content":null,"content":","},"logprobs":null,"finish_reason":null,"matched_stop":null}],"usage":{"prompt_tokens":24,"total_tokens":26,"completion_tokens":2,"prompt_tokens_details":{"cached_tokens":4},"reasoning_tokens":0}}
+
+exit 0

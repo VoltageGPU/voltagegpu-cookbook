@@ -1,0 +1,27 @@
+# LiteLLM proxy in front of VoltageGPU's OpenAI-compatible inference API.
+#
+# "openai/<id>" tells LiteLLM to speak the OpenAI protocol to api_base; the part after "openai/" is
+# the VoltageGPU model id, always a confidential model (suffix -TEE, see GET /v1/models).
+# The keys are read from the environment at start: nothing secret lives in this file.
+model_list:
+  - model_name: gemma-4-tee                       # the alias your applications call
+    litellm_params:
+      model: openai/google/gemma-4-31B-turbo-TEE
+      api_base: https://api.voltagegpu.com/v1
+      api_key: os.environ/VOLTAGEGPU_API_KEY
+  - model_name: qwen3-32b-tee
+    litellm_params:
+      model: openai/Qwen/Qwen3-32B-TEE
+      api_base: https://api.voltagegpu.com/v1
+      api_key: os.environ/VOLTAGEGPU_API_KEY
+  - model_name: deepseek-v3.2-tee
+    litellm_params:
+      model: openai/deepseek-ai/DeepSeek-V3.2-TEE
+      api_base: https://api.voltagegpu.com/v1
+      api_key: os.environ/VOLTAGEGPU_API_KEY
+
+litellm_settings:
+  drop_params: true              # silently drop OpenAI-only parameters the upstream does not take
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY   # clients authenticate to the proxy with this key

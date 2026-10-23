@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# dstack SSH fleet with a VoltageGPU Confidential VM as the host.
+#
+# In your setup the dstack server runs on your laptop or a small box and the fleet file lists the
+# VM's public IP and SSH port (the API returns them in ssh_command). For this test the server runs
+# inside the VM itself and the fleet points at 127.0.0.1: same mechanism (the server reaches the
+# host over SSH, installs its shim, runs jobs in Docker), one machine fewer to rent.
+#
+# Expects the Docker + NVIDIA Container Toolkit install and the dstack venv prepared by
+# deploy-confidential-vm-api/in-vm-prepare.sh. BUDGET_SECONDS bounds every wait.
+set -uo pipefail
+cd "$HOME"
+export PATH="$HOME/.local/bin:$PATH"
+BUDGET=${BUDGET_SECONDS:-600}
+START=$(date +%s)
+left() { echo $(( BUDGET - ($(date +%s) - START) )); }
+log() { echo "[$(date -u +%H:%M:%S)] $*"; }
+
+log "== waiting for Docker + NVIDIA Container Toolkit (host-install.done) and the dstack venv (tools-install.done)"
+while { [ ! -f host-install.done ] || [ ! -f tools-install.done ]; } && [ "$(left)" -gt 240 ]; do sleep 10; done
+if [ ! -f host-install.done ] || [ ! -f tools-install.done ]; then
+  log "installs not finished within the budget: the rest of this script was NOT EXECUTED"
+  tail -3 host-install.log tools-install.log 2>/dev/null
+  exit 2
+fi
+log "host-install exit $(cat host-install.done), tools-install exit $(cat tools-install.done)"
+[ "$(cat host-install.done)" = 0 ] || { tail -20 host-install.log; exit 1; }
+[ "$(cat tools-install.done)" = 0 ] || { tail -20 tools-install.log; exit 1; }
+sudo docker --version
+nvidia-ctk --version | head -1
+
+log "== host requirement check: the GPU from a container (what dstack relies on)"
+sudo docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi --query-gpu=name,driver_version --format=csv,noheader
+
+# shellcheck disable=SC1091
+. "$HOME/dstack-venv/bin/activate"
+dstack --version 2>/dev/null || dstack version
+
+log "== an SSH key the server uses to reach the host (here: this VM, through 127.0.0.1)"
+# Written in $HOME, not ~/.ssh: on 2026-10-23 ssh-keygen got "Permission denied" writing into ~/.ssh as
+# ubuntu on this image, and the step below failed silently. authorized_keys is appended with sudo.
+[ -f "$HOME/fleet_ed25519" ] || ssh-keygen -t ed25519 -N "" -f "$HOME/fleet_ed25519" -q
+PUB=$(cut -d' ' -f2 "$HOME/fleet_ed25519.pub")
+sudo grep -qF "$PUB" "$HOME/.ssh/authorized_keys" || sudo tee -a "$HOME/.ssh/authorized_keys" < "$HOME/fleet_ed25519.pub" >/dev/null
+ssh -i "$HOME/fleet_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/known_hosts_local" ubuntu@127.0.0.1 true && log "ssh ubuntu@127.0.0.1 with the new key: OK" || log "ssh ubuntu@127.0.0.1 with the new key: FAILED"
+
+log "== dstack server (local, SQLite state)"
+nohup dstack server --host 127.0.0.1 --port 3000 > dstack-server.log 2>&1 </dev/null &
+until grep -qiE "running at|admin token" dstack-server.log 2>/dev/null; do
+  [ "$(left)" -le 180 ] && { log "server did not start within the budget"; tail -20 dstack-server.log; exit 2; }
+  sleep 2
+done
+sleep 3
+grep -iE "running at|admin token|project" dstack-server.log | sed -E 's/[0-9a-f]{8}-[0-9a-f-]{27}/<admin token>/g'
+
+cat > fleet.dstack.yml <<'YML'
+type: fleet
+name: voltagegpu-vm
+ssh_config:
+  user: ubuntu
+  identity_file: ~/fleet_ed25519
+  hosts:
+    # Your laptop as the server: put the VM's public IP here and its SSH port below
+    # (both are in ssh_command from GET /api/volt/pods).
+    - hostname: 127.0.0.1
+      port: 22
+YML
+log "== dstack apply -f fleet.dstack.yml  (connects over SSH, installs the shim, registers the host)"
+cat fleet.dstack.yml
+timeout $(( $(left) - 120 )) dstack apply -f fleet.dstack.yml -y
+log "== dstack fleet"
+dstack fleet
+
+cat > task.dstack.yml <<'YML'
+type: task
+name: nvidia-smi-in-tee
+image: nvidia/cuda:12.4.1-base-ubuntu22.04
+commands:
+  - nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
+  - nvidia-smi conf-compute -q | grep -E "CC State|Ready State" || true
+resources:
+  gpu: 1
+YML
+log "== dstack apply -f task.dstack.yml  (a job on the fleet: nvidia-smi inside a container, inside the TEE)"
+timeout $(( $(left) - 30 )) dstack apply -f task.dstack.yml -y
+log "== dstack ps -a"
+dstack ps -a 2>/dev/null | head -5
+log "== done after $(( $(date +%s) - START )) s"

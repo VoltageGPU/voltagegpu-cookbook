@@ -1,0 +1,30 @@
+### bash run.sh  (litellm 1.106.2, openai 2.54.0, Python 3.12.4, Windows 11, 2026-10-23T12:02Z)
+== litellm 1.106.2
+== GET /health/readiness
+{"status":"healthy","db":"Not connected"}
+
+== GET /v1/models (the aliases of config.yaml)
+['deepseek-v3.2-tee', 'gemma-4-tee', 'qwen3-32b-tee']
+
+== POST /v1/chat/completions through the proxy (curl)
+gemma-4-tee | Hello, how are you today? | 27 tokens
+
+== python query.py (openai SDK against the proxy)
+== models the proxy exposes
+['deepseek-v3.2-tee', 'gemma-4-tee', 'qwen3-32b-tee']
+
+== chat.completions.create (alias gemma-4-tee)
+answer: Remote attestation is a process where a device provides a cryptographically signed proof of its current hardware and software configuration to a remote party to verify that the system is trusted and has not been compromised.
+model reported by the upstream: gemma-4-tee
+usage: 23 prompt + 40 completion tokens
+x-litellm-model-id: 74be382119b0b914845b07ce988a8fcabd7e428882c545e230f25e11abe637a2
+x-litellm-model-api-base: https://api.voltagegpu.com/v1
+
+== streaming (alias gemma-4-tee)
+One, two, three, four, five.
+
+== proxy stopped; last log lines (no key is ever printed by the proxy at this log level):
+INFO:     127.0.0.1:59402 - "GET /models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59402 - "POST /chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59402 - "POST /chat/completions HTTP/1.1" 200 OK
+exit 0

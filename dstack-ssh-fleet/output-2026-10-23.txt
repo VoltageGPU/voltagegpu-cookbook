@@ -1,0 +1,79 @@
+### in-vm-dstack.sh, started detached by deploy_and_attest.py on 2026-10-23 (times are UTC)
+[11:57:20] == waiting for Docker + NVIDIA Container Toolkit (host-install.done) and the dstack venv (tools-install.done)
+[11:57:50] host-install exit 0, tools-install exit 0
+Docker version 29.9.2, build a82e528
+NVIDIA Container Toolkit CLI version 1.20.1
+[11:57:50] == host requirement check: the GPU from a container (what dstack relies on)
+Unable to find image 'nvidia/cuda:12.4.1-base-ubuntu22.04' locally
+12.4.1-base-ubuntu22.04: Pulling from nvidia/cuda
+56dc85502937: Pulling fs layer
+0a7674e3e8fe: Pulling fs layer
+0d6448aff889: Pulling fs layer
+b71b637b97c5: Pulling fs layer
+3c645031de29: Pulling fs layer
+b71b637b97c5: Download complete
+56dc85502937: Download complete
+0d6448aff889: Download complete
+3c645031de29: Download complete
+0a7674e3e8fe: Download complete
+3c645031de29: Pull complete
+0d6448aff889: Pull complete
+0a7674e3e8fe: Pull complete
+b71b637b97c5: Pull complete
+56dc85502937: Pull complete
+Digest: sha256:0f6bfcbf267e65123bcc2287e2153dedfc0f24772fb5ce84afe16ac4b2fada95
+Status: Downloaded newer image for nvidia/cuda:12.4.1-base-ubuntu22.04
+NVIDIA RTX PRO 6000 Blackwell Server Edition, 595.71.05
+0.22.5
+[11:58:01] == an SSH key the server uses to reach the host (here: this VM, through 127.0.0.1)
+Saving key "/home/ubuntu/.ssh/fleet_ed25519" failed: Permission denied
+cut: /home/ubuntu/.ssh/fleet_ed25519.pub: No such file or directory
+[11:58:01] == dstack server (local, SQLite state)
+                    Project created. Event targets: project(316702)main. Actor: 
+           INFO     Configured the main project in ~/.dstack/config.yml         
+           INFO     The admin token is <admin token>     
+           INFO     The dstack server 0.22.5 is running at http://127.0.0.1:3000
+[11:58:40] == dstack apply -f fleet.dstack.yml  (connects over SSH, installs the shim, registers the host)
+type: fleet
+name: voltagegpu-vm
+ssh_config:
+  user: ubuntu
+  identity_file: ~/.ssh/fleet_ed25519
+  hosts:
+    # Your laptop as the server: put the VM's public IP here and its SSH port below
+    # (both are in ssh_command from GET /api/volt/pods).
+    - hostname: 127.0.0.1
+      port: 22
+Unable to read the SSH key at ~/.ssh/fleet_ed25519
+[11:58:41] == dstack fleet
+ NAME  NODES  GPU  SPOT  BACKEND  PRICE  STATUS  CREATED 
+
+[11:58:42] == dstack apply -f task.dstack.yml  (a job on the fleet: nvidia-smi inside a container, inside the TEE)
+ Project        main                                 
+ User           admin                                
+ Type           task (nodes=1)                       
+ Resources      cpu=2.. mem=8GB.. disk=100GB.. gpu=1 
+ Spot policy    on-demand                            
+ Max price      off                                  
+ Retry policy   off                                  
+ Idle duration  5m                                   
+ Max duration   off                                  
+
+The project has no fleets. Create one before submitting a run.
+See https://dstack.ai/docs/guides/troubleshooting/#no-fleets
+
+ NAME               BAC…  RE…  INSTANCE TYPE  PRI…  ST…  PRO…  SUBMITTED  ERROR 
+ nvidia-smi-in-tee        -                   -     no         11:58            
+                                                    fl…                         
+
+nvidia-smi-in-tee provisioning completed (failed)
+No fleets
+No matching fleet found. Possible reasons: 
+https://dstack.ai/docs/guides/troubleshooting/#no-fleets
+[11:58:59] == dstack ps -a
+ NAME               BACKEND  GPU  PRICE  STATUS     SUBMITTED  
+ nvidia-smi-in-tee           -    -      no fleets  16 sec ago 
+[11:59:01] == done after 101 s
+
+--- exit code ---
+0

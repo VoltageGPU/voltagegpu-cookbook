@@ -1,0 +1,11 @@
+{
+  "challenge": "bee86ef2ff05bef07f2d397af98ed07d3c29887482df818cda65e7fb7a4614cf",
+  "created_at": "2026-10-23T11:57:08+00:00",
+  "format": "voltage-verify-manifest/1",
+  "statement": null,
+  "workload": {
+    "artifacts": [],
+    "extra": {},
+    "image": null
+  }
+}

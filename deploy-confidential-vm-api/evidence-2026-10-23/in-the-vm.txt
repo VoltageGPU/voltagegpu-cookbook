@@ -1,0 +1,31 @@
+== environment
+6.8.0-110-generic
+crw------- 1 root root 10, 262 Oct 23 11:56 /dev/tdx_guest
+kvm
+NVIDIA RTX PRO 6000 Blackwell Server Edition, 595.71.05
+    CC State                   : ON
+    Multi-GPU Mode             : None
+    CC GPUs Ready State        : Ready
+== pip (not on the image)
+voltage-verify 0.2.3
+== 1. manifest with a random challenge (yours, not the provider's)
+manifest written to manifest.json
+challenge        bee86ef2ff05bef07f2d397af98ed07d3c29887482df818cda65e7fb7a4614cf
+commitment256    3b78ebd99fd26b3baada830f6e07af2b0743de3d72c6681f9b40cac0221b10fb   (NVIDIA nonce)
+commitment512    5962c06be795cbefa479bc43796d890b34b105732590e134ce401324ba021a04...   (TDX report_data)
+keep the challenge: pass it to `verify --challenge` to reject replayed bundles
+challenge: bee86ef2ff05bef07f2d397af98ed07d3c29887482df818cda65e7fb7a4614cf
+== 2. attestation (TDX quote + NRAS), as root
+Nonce generated: 3b78ebd99fd26b3baada830f6e07af2b0743de3d72c6681f9b40cac0221b10fb
+Number of GPUs available : 1
+Fetching GPU 0 information from GPU driver.
+All GPU Evidences fetched successfully
+**** Attestation Successful ****
+bundle written to bundle.json (single-gpu, 4940-byte quote)
+-rw-r--r-- 1 root root 549646 Oct 23 11:57 bundle.json
+== 3. verification INSIDE the VM (the one that counts is done outside)
+TDX: MRTD eea8b6a814569a52bd1e12f6b869bb2d...  TCB UpToDate  QE UpToDate
+GPU: GPU-0 GB20X driver 595.71.05 vbios 98.02.9E.00.01 measurements success
+
+RESULT: VERIFIED
+== archive ready: /tmp/proofs.tgz

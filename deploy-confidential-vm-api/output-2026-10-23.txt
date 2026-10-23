@@ -1,0 +1,35 @@
+### python deploy_and_attest.py --run --sku rtx6000b-small --max-minutes 30 --ssh-key <key> --pre-script in-vm-prepare.sh --script ../vllm-in-tee/in-vm-vllm.sh --background-script ../dstack-ssh-fleet/in-vm-dstack.sh --background-script ../skypilot/in-vm-skypilot.sh
+### Windows 11, Python 3.12.4, voltage-verify 0.2.3, OpenSSH for Windows; 2026-10-23, local times (UTC+2)
+13:53:55 balance 10.61 $, rtx6000b-small 3.8 $/h, 8 available, attestation verified 2026-10-09, voltage-verify 0.2.3, 0 confidential VM running
+13:53:55 SSH key: already registered
+13:53:55 POST /api/volt/pods {"provider": "confidential", "name": "cookbook-20261023", "resource_name": "rtx6000b-small", "hardstop_hours": 1}
+13:54:10    HTTP 200: pod cmvkwwhzj000el2086wy3trr2, workload wrk-0x2ixdmlci9w, 3.8 $/h, site hard stop at 2026-10-23T12:54:10.214Z, sudo password: returned once, not logged
+13:54:25    30 s  provider_status provisioning  ssh_ready False
+13:54:41    46 s  provider_status provisioning  ssh_ready False
+13:54:56    61 s  provider_status provisioning  ssh_ready False
+13:55:12    77 s  provider_status provisioning  ssh_ready False
+13:55:28    92 s  provider_status provisioning  ssh_ready False
+13:55:43    108 s  provider_status provisioning  ssh_ready False
+13:55:59    124 s  provider_status provisioning  ssh_ready False
+13:56:15    139 s  provider_status provisioning  ssh_ready False
+13:56:30    155 s  provider_status running  ssh_ready True
+13:56:33    ssh up after 158 s (<vm public ip>:20007)
+13:56:33    >> in-vm-prepare.sh (budget 120 s)
+13:56:35    << in-vm-prepare.sh exit 0, 4 lines, last: [11:56:34] background jobs started: vllm-install, host-install, tools-install (logs: *-install.log)
+13:56:37    nvidia-smi exit 0: Fri Oct 23 11:56:35 2026       
+13:56:37    running two-proofs-in-the-vm.sh with CHALLENGE drawn here
+13:57:12    two-proofs exit 0, last line: ['== archive ready: /tmp/proofs.tgz']
+13:57:17    bundle copied out after 202 s
+13:57:20    background: in-vm-dstack.sh started (budget 1056 s)
+13:57:23    background: in-vm-skypilot.sh started (budget 1053 s)
+13:57:23    >> in-vm-vllm.sh (budget 961 s)
+14:12:27    << in-vm-vllm.sh exit 2, 41 lines, last: RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+14:12:43    background in-vm-dstack finished after 1128 s of VM time
+14:12:43    background in-vm-skypilot finished after 1128 s of VM time
+14:12:45    in-vm-dstack: finished
+14:12:46    in-vm-skypilot: finished
+14:12:49    POST /api/volt/pods/{id}/stop -> HTTP 200
+14:12:49 VM stop via stop after 1134 s of VM time; confirming through GET /api/volt/pods
+14:12:50    no longer listed
+14:12:53 billing: balance 10.6114 -> 9.4309 $, net cost 1.1805 $ for 1134 s at 3.8 $/h (one hour prepaid at deploy, unused seconds refunded)
+14:12:54 offline verify: exit 0, ['RESULT: VERIFIED']; wrong challenge: ['RESULT: NOT VERIFIED (manifest.challenge)']

@@ -1,0 +1,9 @@
+# Scripts are piped into the VM over SSH: a CRLF copy stops bash at `set -euo pipefail`. LF everywhere.
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.ipynb text eol=lf
+# Evidence folders are stored and checked out byte for byte, so SHA256SUMS keeps matching.
+deploy-confidential-vm-api/evidence-*/** -text

@@ -1,0 +1,47 @@
+### in-vm-skypilot.sh, started detached by deploy_and_attest.py on 2026-10-23 (times are UTC)
+[11:57:23] == waiting for the host install (host-install.done) and the SkyPilot venv (tools-install.done)
+skypilot, version 0.14.1
+Client Version: v1.37.1
+[11:58:00] == an SSH key SkyPilot uses to reach the node (here: this VM, through 127.0.0.1)
+Saving key "/home/ubuntu/.ssh/fleet_ed25519" failed: Permission denied
+cut: /home/ubuntu/.ssh/fleet_ed25519.pub: No such file or directory
+voltagegpu-vm:
+  user: ubuntu
+  identity_file: ~/.ssh/fleet_ed25519
+  hosts:
+    # Your laptop as the SkyPilot host: put an ~/.ssh/config alias here that carries the VM's
+    # public IP and SSH port (both in ssh_command from GET /api/volt/pods).
+    - 127.0.0.1
+[11:58:00] == sky ssh up  (installs k3s on the node, labels its GPU, registers the pool)
+Failed to connect to SkyPilot API server at http://127.0.0.1:46580. Starting a local server.
+✓ SkyPilot API server started. 
+Found 1 Node Pool: voltagegpu-vm
+Successfully deployed 0 cluster(s) (). Failed to deploy 1 cluster(s): 
+  voltagegpu-vm: SSH Identity File Missing: /home/ubuntu/.ssh/fleet_ed25519
+RuntimeError: Failed to deploy SkyPilot on some Node Pools.
+[11:58:14] == sky check ssh
+
+🎉 Enabled infra 🎉
+  No infra to check/enabled.
+
+To enable a cloud, follow the hints above and rerun: sky check
+If any problems remain, refer to detailed docs at: https://docs.skypilot.co/en/latest/getting-started/installation.html
+
+Using SkyPilot API server: http://127.0.0.1:46580
+[11:58:17] == GPUs the pool offers
+SSH Node Pools are not enabled. To fix, run: sky check ssh 
+[11:58:23] GPU name as SkyPilot sees it: <not detected>
+[11:58:23] == sky launch --infra ssh/voltagegpu-vm  (a task as a pod on the node: nvidia-smi inside the TEE)
+Command to run: nvidia-smi --query-gpu=name,driver_version --format=csv,noheader || echo "no GPU in this pod"; nvidia-smi conf-compute -q 2>/dev/null | grep -E "CC State|Ready State" || true
+ValueError: SSH Node Pool 'voltagegpu-vm' is not set up. Run `sky check` for more details. 
+[11:58:27] == sky status
+
+Managed jobs
+No in-progress managed jobs. (See: sky jobs -h)
+
+Services
+No live services. (See: sky serve -h)
+[11:58:36] == done after 73 s
+
+--- exit code ---
+0
