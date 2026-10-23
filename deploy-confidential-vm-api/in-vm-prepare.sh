@@ -4,7 +4,8 @@
 # code when it finishes; the later scripts (vllm-in-tee, dstack-ssh-fleet, skypilot) wait on those.
 #
 #   vllm-install   uv venv + vLLM wheels (the biggest download)
-#   host-install   Docker + NVIDIA Container Toolkit (dstack SSH fleets and SkyPilot node pools both
+#   host-install   gcc + Python headers (cc.done, Triton's JIT needs them), then
+#                  Docker + NVIDIA Container Toolkit (dstack SSH fleets and SkyPilot node pools both
 #                  run workloads in containers with GPU access), socat and netcat for SkyPilot
 #   tools-install  dstack and SkyPilot CLIs in their own venvs, kubectl (SkyPilot needs it)
 set -uo pipefail
@@ -22,6 +23,9 @@ uv --version
     echo 0 > vllm-install.done ) > vllm-install.log 2>&1 || echo 1 > vllm-install.done; } </dev/null >/dev/null 2>&1 &
 
 { ( set -e
+    # gcc and Python headers first (Triton JIT, used by vLLM), marked by cc.done
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq build-essential python3-dev && echo 0 > cc.done || echo 1 > cc.done
     curl -fsSL https://get.docker.com | sudo sh
     curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
       | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg

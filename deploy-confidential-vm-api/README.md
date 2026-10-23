@@ -14,7 +14,8 @@
    published script <https://voltagegpu.com/blog/two-proofs/evidence/two-proofs-in-the-vm.sh> with a
    64-hex **challenge drawn on your machine**, so an old bundle cannot be replayed; the bundle,
    manifest and checksums are copied out over SSH.
-5. Optional extra scripts (`--pre-script`, `--script`, `--background-script`): this is how
+5. Optional extra scripts (`--pre-script`, `--script path[:seconds]` run in order with a time cap,
+   `--background-script`): this is how
    `../vllm-in-tee`, `../dstack-ssh-fleet` and `../skypilot` ran on the same VM.
 6. **`finally`**: `POST /api/volt/pods/{id}/stop` (retried, `DELETE` as fallback), confirmed by the
    VM disappearing from `GET /api/volt/pods`; a watchdog does the same at `--max-minutes - 5`; every
@@ -134,12 +135,42 @@ voltage-verify verify bundle.json --offline --hwmodel GB20X --gpus 1 \
 What this proves and does not prove is spelled out in `../verify-attestation-notebook` (section 7) with
 the words of voltage-verify's `WHAT_IT_PROVES.md`.
 
+### Second run, same day (13:23 to 13:31 UTC)
+
+Same script with the three other examples run in order with time caps
+(`--max-minutes 40 --script ../vllm-in-tee/in-vm-vllm.sh:720 --script ../dstack-ssh-fleet/in-vm-dstack.sh:480
+--script ../skypilot/in-vm-skypilot.sh:900`). The VM was stopped as soon as the last script returned.
+Unedited output in [`output-2026-10-23-run2.txt`](output-2026-10-23-run2.txt):
+
+```text
+15:23:24 POST /api/volt/pods {"provider": "confidential", "name": "cookbook-20261023", "resource_name": "rtx6000b-small", "hardstop_hours": 1}
+15:23:39    HTTP 200: pod cmvl03l8o000dl608wvtv4if5, workload wrk-0wf8t4mta311, 3.8 $/h, site hard stop at 2026-10-23T14:23:39.873Z, sudo password: returned once, not logged
+15:26:03    ssh up after 158 s (<vm public ip>:<port>)
+15:26:43    two-proofs exit 0, last line: ['== archive ready: /tmp/proofs.tgz']
+15:26:48    >> in-vm-vllm.sh (budget 720 s)
+15:31:14    << in-vm-vllm.sh exit 0, 64 lines, last: [13:31:14] == vLLM stopped after 264 s
+15:31:24    << in-vm-dstack.sh exit 1, 13 lines, last: [13:31:24] ssh ubuntu@127.0.0.1 with the new key: FAILED. NOT EXECUTED: fleet and task (dstack canno
+15:31:31    << in-vm-skypilot.sh exit 1, 5 lines, last: [13:31:31] ssh ubuntu@127.0.0.1 with the new key: FAILED. NOT EXECUTED: sky ssh up and sky launch
+15:31:33    POST /api/volt/pods/{id}/stop -> HTTP 200
+15:31:34    no longer listed
+15:31:37 billing: balance 9.4309 -> 8.9309 $, net cost 0.5 $ for 489 s at 3.8 $/h (one hour prepaid at deploy, unused seconds refunded)
+15:31:37 offline verify: exit 0, ['RESULT: VERIFIED']; wrong challenge: ['RESULT: NOT VERIFIED (manifest.challenge)']
+```
+
+Ledger of the account: 3.80 $ charged at deploy, 3.30 $ refunded at release, **0.50 $ net**. The
+bundle of this second run verified the same way (fresh challenge, `RESULT: VERIFIED`); it is not added
+to the repository, the first one already shows it.
+
 ### Observed on this image, useful before you script against it
 
 * `pip` is not on the image; the published script installs it with `get-pip.py` (and `uv` installs
   in two seconds, see `in-vm-prepare.sh`).
-* As `ubuntu`, `ssh-keygen -f ~/.ssh/<name>` answered `Permission denied` (seen by the dstack and
-  SkyPilot scripts). The scripts now write keys in `$HOME` and append `authorized_keys` with `sudo`.
-  Not verified further (the VM was released before `ls -ld ~/.ssh` was run).
+* `~/.ssh` belongs to root on this image (`drwxr-xr-x root root /home/ubuntu/.ssh`, seen on the
+  second run), while `authorized_keys` belongs to `ubuntu` (mode 600). So `ssh-keygen -f ~/.ssh/<name>`
+  as `ubuntu` fails with `Permission denied`; write new keys elsewhere. A key appended to
+  `authorized_keys` with `sudo tee -a` was then refused for `ssh ubuntu@127.0.0.1`; the probable cause
+  (a file without a final newline) is not verified, see `../dstack-ssh-fleet`.
+* Without gcc and the Python headers (absent from the image), Triton cannot build its launcher; install
+  `build-essential python3-dev` before anything that runs Triton kernels (vLLM does).
 * Passwordless `sudo` works for `ubuntu`; outbound HTTPS, PyPI, Docker Hub and apt mirrors were
   reachable; `curl https://get.docker.com | sh` plus the NVIDIA Container Toolkit took about 75 s.

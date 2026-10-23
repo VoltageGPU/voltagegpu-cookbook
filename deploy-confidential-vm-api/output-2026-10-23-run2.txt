@@ -1,0 +1,34 @@
+### python deploy_and_attest.py --run --sku rtx6000b-small --max-minutes 40 --ssh-key <key> --pre-script in-vm-prepare.sh --script ../vllm-in-tee/in-vm-vllm.sh:720 --script ../dstack-ssh-fleet/in-vm-dstack.sh:480 --script ../skypilot/in-vm-skypilot.sh:900
+### second run, Windows 11, Python 3.12.4, voltage-verify 0.2.3; 2026-10-23, local times (UTC+2)
+15:23:24 balance 9.43 $, rtx6000b-small 3.8 $/h, 8 available, attestation verified 2026-10-09, voltage-verify 0.2.3, 0 confidential VM running
+15:23:24 SSH key: registered (id cmvl039vo0001l608ps0im5t2)
+15:23:24 POST /api/volt/pods {"provider": "confidential", "name": "cookbook-20261023", "resource_name": "rtx6000b-small", "hardstop_hours": 1}
+15:23:39    HTTP 200: pod cmvl03l8o000dl608wvtv4if5, workload wrk-0wf8t4mta311, 3.8 $/h, site hard stop at 2026-10-23T14:23:39.873Z, sudo password: returned once, not logged
+15:23:55    30 s  provider_status provisioning  ssh_ready False
+15:24:11    46 s  provider_status provisioning  ssh_ready False
+15:24:27    62 s  provider_status provisioning  ssh_ready False
+15:24:42    78 s  provider_status provisioning  ssh_ready False
+15:24:58    93 s  provider_status provisioning  ssh_ready False
+15:25:14    109 s  provider_status provisioning  ssh_ready False
+15:25:29    124 s  provider_status provisioning  ssh_ready False
+15:25:45    140 s  provider_status provisioning  ssh_ready False
+15:26:01    156 s  provider_status running  ssh_ready True
+15:26:03    ssh up after 158 s (<vm public ip>:20007)
+15:26:03    >> in-vm-prepare.sh (budget 120 s)
+15:26:05    << in-vm-prepare.sh exit 0, 4 lines, last: [13:26:05] background jobs started: vllm-install, host-install, tools-install (logs: *-install.log)
+15:26:07    nvidia-smi exit 0: Fri Oct 23 13:26:06 2026       
+15:26:07    running two-proofs-in-the-vm.sh with CHALLENGE drawn here
+15:26:43    two-proofs exit 0, last line: ['== archive ready: /tmp/proofs.tgz']
+15:26:48    bundle copied out after 204 s
+15:26:48    >> in-vm-vllm.sh (budget 720 s)
+15:31:14    << in-vm-vllm.sh exit 0, 64 lines, last: [13:31:14] == vLLM stopped after 264 s
+15:31:14    >> in-vm-dstack.sh (budget 480 s)
+15:31:24    << in-vm-dstack.sh exit 1, 13 lines, last: [13:31:24] ssh ubuntu@127.0.0.1 with the new key: FAILED. NOT EXECUTED: fleet and task (dstack canno
+15:31:24    >> in-vm-skypilot.sh (budget 900 s)
+15:31:31    << in-vm-skypilot.sh exit 1, 5 lines, last: [13:31:31] ssh ubuntu@127.0.0.1 with the new key: FAILED. NOT EXECUTED: sky ssh up and sky launch
+15:31:33    POST /api/volt/pods/{id}/stop -> HTTP 200
+15:31:33 VM stop via stop after 489 s of VM time; confirming through GET /api/volt/pods
+15:31:34    no longer listed
+15:31:37 billing: balance 9.4309 -> 8.9309 $, net cost 0.5 $ for 489 s at 3.8 $/h (one hour prepaid at deploy, unused seconds refunded)
+15:31:37 offline verify: exit 0, ['RESULT: VERIFIED']; wrong challenge: ['RESULT: NOT VERIFIED (manifest.challenge)']
+orchestrator exit 0

@@ -1,0 +1,62 @@
+### in-vm-vllm.sh, second run, by deploy_and_attest.py over SSH on 2026-10-23 (times are UTC)
+[13:26:50] == GPU as seen from the guest
+name, driver_version, memory.total [MiB], memory.used [MiB]
+NVIDIA RTX PRO 6000 Blackwell Server Edition, 595.71.05, 97887 MiB, 0 MiB
+    CC State                   : ON
+    Multi-GPU Mode             : None
+    CC GPUs Ready State        : Ready
+[13:26:50] == waiting for the vLLM install (vllm-install.done)
+[13:26:50] vLLM install exit 0
+[13:26:50] == C compiler for Triton's JIT
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+flashinfer-python                        0.7.0.post1
+openai                                   3.37.0
+torch                                    2.13.0
+transformers                             5.19.0
+triton                                   3.7.1
+vllm                                     0.32.0
+[13:26:55] == smoke test: PyTorch and Triton on the GPU (allocation, fp16 matmul, pinned host memory, a Triton kernel)
+torch 2.13.0+cu130 | cuda 13.0 | NVIDIA RTX PRO 6000 Blackwell Server Edition | capability (12, 0)
+fp16 matmul 4096x4096: ok, 818.3 ms
+pinned host -> device, 256 MiB: ok, 45.9 ms (5.8 GB/s)
+triton 3.7.1 kernel: ok, sum = 2048.0
+[13:27:09] == attempt 1: vllm serve Qwen/Qwen2.5-0.5B-Instruct 
+[13:30:20] attempt 1: server answering after 210 s of this script
+[13:30:20] == startup facts from the server log (attempt 1)
+INFO 10-23 13:27:35 [model.py:2152] Using max model len 4096
+(EngineCore pid=11963) INFO 10-23 13:27:46 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='Qwen/Qwen2.5-0.5B-Instruct', speculative_config=None, tokenizer='Qwen/Qwen2.5-0.5B-Instruct', skip_token
+(EngineCore pid=11963) INFO 10-23 13:27:52 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_990431574a8449f5be22341345c0c9bd backend=nccl
+(EngineCore pid=11963) INFO 10-23 13:27:52 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=11963) INFO 10-23 13:27:54 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=11963) INFO 10-23 13:27:58 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=11963) INFO 10-23 13:27:58 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=11963) INFO 10-23 13:28:03 [weight_utils.py:532] Time spent downloading weights for Qwen/Qwen2.5-0.5B-Instruct: 4.206018 seconds
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.78it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.78it/s]
+(EngineCore pid=11963) INFO 10-23 13:28:03 [default_loader.py:501] Loading weights took 0.63 seconds
+(EngineCore pid=11963) INFO 10-23 13:28:05 [model_runner.py:424] Model loading took 0.93 GiB memory and 11.211049 seconds
+(EngineCore pid=11963) INFO 10-23 13:28:05 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=11963) INFO 10-23 13:28:05 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=11963) INFO 10-23 13:28:07 [gpu_worker.py:759] Available KV cache memory: 54.76 GiB
+(EngineCore pid=11963) INFO 10-23 13:28:07 [kv_cache_utils.py:2327] GPU KV cache size: 4,785,120 tokens, Maximum concurrency for 4,096 tokens per request: 1168.24x
+(EngineCore pid=11963) INFO 10-23 13:29:16 [kernel_warmup.py:460] Using FlashInfer autotune cache file: /home/ubuntu/.cache/vllm/flashinfer_autotune_cache/0.7.0.post1/120f/0bc1f5974922c34beda61c58ae086e2299475c51f96aeec1
+(EngineCore pid=11963) INFO 10-23 13:30:14 [gpu_worker.py:1034] Free memory on device (94.1/94.86 GiB) on startup. Desired GPU memory utilization is (0.6, 56.91 GiB). Actual usage is 1.84 GiB for consumed memory (weights
+INFO 10-23 13:30:17 [entry.py:140] Starting vLLM server on http://127.0.0.1:8000
+[13:30:20] == GET /v1/models
+[('Qwen/Qwen2.5-0.5B-Instruct', 4096)]
+[13:30:20] == POST /v1/chat/completions with curl
+{"id":"chatcmpl-ac35c190f0c3d47e","object":"chat.completion","created":1792762220,"model":"Qwen/Qwen2.5-0.5B-Instruct","choices":[{"index":0,"message":{"role":"assistant","content":"                                        ","refusal":null,"annotations":null,"audio":null,"function_call":null,"reasoning":null},"logprobs":null,"finish_reason":"length","stop_reason":null,"token_ids":null,"routed_experts":null}],"service_tier":null,"system_fingerprint":"vllm-0.32.0-fdbbce14","usage":{"prompt_tokens":39,"total_tokens":79,"completion_tokens":40,"prompt_tokens_details":null,"completion_tokens_details":null},"prompt_logprobs":null,"prompt_token_ids":null,"prompt_text":null,"kv_transfer_params":null,"ec_transfer_params":null,"metrics":null}
+[13:31:06] == POST /v1/chat/completions with stream: true (first chunks)
+data: {"id":"chatcmpl-8a0d80d9c329516b","object":"chat.completion.chunk","created":1792762266,"model":"Qwen/Qwen2.5-0.5B-Instruct","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}],"prompt_token_ids":null,"prompt_text":null}
+
+data: {"id":"chatcmpl-8a0d80d9c329516b","object":"chat.completion.chunk","created":1792762266,"model":"Qwen/Qwen2.5-0.5B-Instruct","choices":[{"index":0,"delta":{"content":" "},"logprobs":null,"finish_reason":null,"token_ids":null}]}
+
+data: {"id":"chatcmpl-8a0d80d9c329516b","object":"chat.completion.chunk","created":1792762266,"model":"Qwen/Qwen2.5-0.5B-Instruct","choices":[{"index":0,"delta":{"content":" "},"logprobs":null,"finish_reason":null,"token_ids":null}]}
+
+[13:31:07] == the openai SDK against the local server
+
+usage: 37 prompt + 30 completion tokens
+[13:31:09] == GPU memory while serving
+59048 MiB, 97887 MiB
+[13:31:14] == vLLM stopped after 264 s

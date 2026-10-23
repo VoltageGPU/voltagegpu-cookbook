@@ -15,10 +15,10 @@ of the folder says so, step by step, instead of showing an expected output.
 | [`litellm-proxy/`](litellm-proxy/) | LiteLLM proxy with VoltageGPU declared as an `openai/` provider, queried with curl and the SDK | executed |
 | [`langchain-and-llamaindex/`](langchain-and-llamaindex/) | `ChatOpenAI(base_url=...)` and `OpenAILike(api_base=...)`, invoke and stream | executed |
 | [`verify-attestation-notebook/`](verify-attestation-notebook/) | Jupyter notebook: download a published evidence bundle, verify it offline with voltage-verify 0.2.3, read every check, break it on purpose, what it does not prove | executed, outputs inside the notebook |
-| [`deploy-confidential-vm-api/`](deploy-confidential-vm-api/) | One Confidential VM through the public API (`rtx6000b-small`), SSH, `nvidia-smi`, the two proofs on a challenge drawn locally, stop in a `finally`, billing read back, offline verification | executed: 1134 s of VM, 1.18 $ net, `RESULT: VERIFIED`; the bundle is in `evidence-2026-10-23/` |
-| [`vllm-in-tee/`](vllm-in-tee/) | vLLM serving a small model inside the VM, queried on the OpenAI-compatible port | partial: install and GPU detection ok, `vllm serve` failed at engine start, root cause not captured; queries not executed |
-| [`dstack-ssh-fleet/`](dstack-ssh-fleet/) | The VM as a host of a dstack SSH fleet | partial: Docker, NVIDIA Container Toolkit, GPU from a container and the dstack server ok; fleet registration and the task not executed (a key-path bug in the test script, fixed since, not rerun) |
-| [`skypilot/`](skypilot/) | The VM as a node of a SkyPilot SSH Node Pool | partial: install ok; `sky ssh up` and `sky launch` not executed (same bug) |
+| [`deploy-confidential-vm-api/`](deploy-confidential-vm-api/) | One Confidential VM through the public API (`rtx6000b-small`), SSH, `nvidia-smi`, the two proofs on a challenge drawn locally, stop in a `finally`, billing read back, offline verification | executed twice: 1134 s for 1.18 $ net, then 489 s for 0.50 $ net, `RESULT: VERIFIED` both times; the first bundle is in `evidence-2026-10-23/` |
+| [`vllm-in-tee/`](vllm-in-tee/) | vLLM serving a small model inside the VM, queried on the OpenAI-compatible port | runs, output not correct: the server started and answered `/v1/models`, chat completions, streaming and the openai SDK, but the generated text was only whitespace; cause not known |
+| [`dstack-ssh-fleet/`](dstack-ssh-fleet/) | The VM as a host of a dstack SSH fleet | partial: Docker, NVIDIA Container Toolkit, the GPU from a container and the dstack server ok; fleet and task not executed, the test's self-loop SSH key was refused (`Permission denied (publickey)`) |
+| [`skypilot/`](skypilot/) | The VM as a node of a SkyPilot SSH Node Pool | partial: install ok; `sky ssh up` and `sky launch` not executed, same SSH refusal |
 
 ## Before you start
 

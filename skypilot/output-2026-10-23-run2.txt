@@ -1,0 +1,9 @@
+### in-vm-skypilot.sh, second run, by deploy_and_attest.py over SSH on 2026-10-23 (times are UTC)
+[13:31:26] == waiting for the host install (host-install.done) and the SkyPilot venv (tools-install.done)
+skypilot, version 0.14.1
+Client Version: v1.37.1
+[13:31:31] == an SSH key SkyPilot uses to reach the node (here: this VM, through 127.0.0.1)
+[13:31:31] ssh ubuntu@127.0.0.1 with the new key: FAILED. NOT EXECUTED: sky ssh up and sky launch
+
+--- stderr ---
+ubuntu@127.0.0.1: Permission denied (publickey).

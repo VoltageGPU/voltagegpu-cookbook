@@ -1,0 +1,37 @@
+### in-vm-dstack.sh, second run, by deploy_and_attest.py over SSH on 2026-10-23 (times are UTC)
+[13:31:16] == waiting for Docker + NVIDIA Container Toolkit (host-install.done) and the dstack venv (tools-install.done)
+[13:31:16] host-install exit 0, tools-install exit 0
+Docker version 29.9.2, build a82e528
+NVIDIA Container Toolkit CLI version 1.20.1
+#AllowTcpForwarding yes
+[13:31:16] == host requirement check: the GPU from a container (up to 280 s)
+NVIDIA RTX PRO 6000 Blackwell Server Edition, 595.71.05
+[13:31:21] host requirement check: the GPU from a container: exit 0
+0.22.5
+[13:31:24] == an SSH key the server uses to reach the host (here: this VM, through 127.0.0.1)
+drwxr-xr-x 2 root   root   4096 Oct 23 13:24 /home/ubuntu/.ssh
+-rw------- 1 ubuntu ubuntu  387 Oct 23 13:24 /home/ubuntu/.ssh/authorized_keys
+[13:31:24] ssh ubuntu@127.0.0.1 with the new key: FAILED. NOT EXECUTED: fleet and task (dstack cannot reach the host)
+
+--- stderr ---
+Unable to find image 'nvidia/cuda:12.4.1-base-ubuntu22.04' locally
+12.4.1-base-ubuntu22.04: Pulling from nvidia/cuda
+56dc85502937: Pulling fs layer
+0a7674e3e8fe: Pulling fs layer
+0d6448aff889: Pulling fs layer
+3c645031de29: Pulling fs layer
+b71b637b97c5: Pulling fs layer
+56dc85502937: Download complete
+0d6448aff889: Download complete
+b71b637b97c5: Download complete
+3c645031de29: Download complete
+0a7674e3e8fe: Download complete
+3c645031de29: Pull complete
+0d6448aff889: Pull complete
+0a7674e3e8fe: Pull complete
+56dc85502937: Pull complete
+b71b637b97c5: Pull complete
+Digest: sha256:0f6bfcbf267e65123bcc2287e2153dedfc0f24772fb5ce84afe16ac4b2fada95
+Status: Downloaded newer image for nvidia/cuda:12.4.1-base-ubuntu22.04
+Warning: Permanently added '127.0.0.1' (ED25519) to the list of known hosts.
+ubuntu@127.0.0.1: Permission denied (publickey).

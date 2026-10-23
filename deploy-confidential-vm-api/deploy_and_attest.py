@@ -15,7 +15,7 @@ Standard library only. Needs: an OpenSSH client, and voltage-verify >= 0.2.3 in 
   export VOLTAGEGPU_VOLT_API_KEY=volt_...   # GPU Pods key, https://voltagegpu.com/api-keys
   python deploy_and_attest.py --check                           # guards only, nothing rented
   python deploy_and_attest.py --run --ssh-key ~/.ssh/id_ed25519 [--sku rtx6000b-small]
-         [--pre-script a.sh ...] [--script b.sh ...] [--background-script c.sh ...] [--max-minutes 30]
+         [--pre-script a.sh ...] [--script b.sh[:seconds] ...] [--background-script c.sh ...] [--max-minutes 30]
   python deploy_and_attest.py --reap                            # stop a VM a killed run left behind
 """
 from __future__ import annotations
@@ -303,13 +303,14 @@ class Run:
         background = [pathlib.Path(s) for s in self.args.background_script]
         for p in background:
             self.start_background(target, p)
-        for s in self.args.script:
+        for spec in self.args.script:
+            path, cap = split_cap(spec)
             if self.left() < 300:
-                log(f"   {pathlib.Path(s).name}: NOT EXECUTED, {int(self.left())} s left before the deadline")
+                log(f"   {path.name}: NOT EXECUTED, {int(self.left())} s left before the deadline")
                 continue
-            # Leaves four minutes to collect the background logs and stop the VM.
-            budget = self.left() - 240
-            self.run_script(target, pathlib.Path(s), {"BUDGET_SECONDS": str(int(budget))}, budget)
+            # At most its own cap, and always four minutes kept to collect logs and stop the VM.
+            budget = min(cap, self.left() - 240)
+            self.run_script(target, path, {"BUDGET_SECONDS": str(int(budget))}, budget)
         if background:
             self.collect_background(target, background)
 
@@ -368,6 +369,14 @@ class Run:
         return 0
 
 
+def split_cap(spec: str) -> tuple[pathlib.Path, float]:
+    """'a.sh:600' -> (a.sh, 600 s); 'a.sh' -> (a.sh, no cap). A Windows drive colon is not a cap."""
+    head, sep, tail = spec.rpartition(":")
+    if sep and tail.isdigit() and head:
+        return pathlib.Path(head), float(tail)
+    return pathlib.Path(spec), float("inf")
+
+
 def reap(api: Api) -> int:
     for state in sorted(RUNS.glob("*/state.json")):
         s = json.loads(state.read_text())
@@ -392,7 +401,8 @@ def parse() -> argparse.Namespace:
     p.add_argument("--ssh-key", help="private key; <key>.pub is registered on the account if needed")
     p.add_argument("--max-minutes", type=int, default=30, help="hard cap on VM lifetime (watchdog at cap - 5)")
     p.add_argument("--pre-script", action="append", default=[], help="bash script run in the VM before the attestation")
-    p.add_argument("--script", action="append", default=[], help="bash script run in the VM after the bundle is copied out")
+    p.add_argument("--script", action="append", default=[],
+                   help="bash script run in the VM after the bundle is copied out, in order; path:seconds caps its time")
     p.add_argument("--background-script", action="append", default=[],
                    help="bash script started detached in the VM after the bundle is copied out; its log is collected at the end")
     a = p.parse_args()

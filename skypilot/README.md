@@ -50,25 +50,27 @@ sky ssh down               # removes the SkyPilot runtime from the node
 
 The VM keeps billing while it exists: release it through the API or the dashboard when done.
 
-## Executed on 2026-10-23, step by step
+## Executed on 2026-10-23: two runs, node pool and task not executed
 
-To stay within one rented VM, SkyPilot ran *inside* the VM and the pool pointed at `127.0.0.1`.
-`in-vm-skypilot.sh` was started detached by `deploy_and_attest.py`. Versions: skypilot 0.14.1,
-kubectl v1.37.1. Unedited log in [`output-2026-10-23.txt`](output-2026-10-23.txt).
+To stay within one rented VM per run, SkyPilot ran *inside* the VM and the pool pointed at
+`127.0.0.1`. Versions: skypilot 0.14.1, kubectl v1.37.1. Unedited logs:
+[`output-2026-10-23.txt`](output-2026-10-23.txt) (first run) and
+[`output-2026-10-23-run2.txt`](output-2026-10-23-run2.txt) (second run).
 
 | Step | Status | Evidence |
 |---|---|---|
-| `pip install "skypilot[kubernetes]"` (via uv), kubectl | **executed** | `skypilot, version 0.14.1`, `Client Version: v1.37.1` |
+| `pip install "skypilot[kubernetes]"` (via uv), kubectl | **executed**, both runs | `skypilot, version 0.14.1`, `Client Version: v1.37.1` |
 | Docker + NVIDIA Container Toolkit on the node | **executed** (shared with the dstack example) | see `../dstack-ssh-fleet/README.md` |
-| `~/.sky/ssh_node_pools.yaml` written | **executed** | printed in the log |
-| Local SkyPilot API server | **executed** | `SkyPilot API server started`, `Found 1 Node Pool: voltagegpu-vm` |
-| SSH key for the pool | **failed**: `ssh-keygen` answered `Saving key "/home/ubuntu/.ssh/fleet_ed25519" failed: Permission denied` | script bug, not SkyPilot's: the key was written into `~/.ssh`, which the `ubuntu` user could not write to on this image |
-| `sky ssh up` (k3s install, GPU labelling) | **not executed**: `Failed to deploy 1 cluster(s): voltagegpu-vm: SSH Identity File Missing: /home/ubuntu/.ssh/fleet_ed25519` | |
-| `sky check ssh` | ran, **no pool enabled** (`No infra to check/enabled`) | |
-| `sky gpus list --infra ssh` | ran, `SSH Node Pools are not enabled` | |
-| `sky launch --infra ssh/voltagegpu-vm ...` | **not executed**: `SSH Node Pool 'voltagegpu-vm' is not set up` | |
+| `~/.sky/ssh_node_pools.yaml` written, local API server | **executed** (run 1) | `SkyPilot API server started`, `Found 1 Node Pool: voltagegpu-vm` |
+| SSH key SkyPilot uses to reach the node | **failed** in both runs | run 1: `ssh-keygen` could not write into `~/.ssh` (root-owned on this image); run 2: key in `$HOME`, appended to `authorized_keys` with `sudo`, then `ssh ubuntu@127.0.0.1` answered `Permission denied (publickey)` |
+| `sky ssh up` (k3s install, GPU labelling) | **not executed** | run 1: `SSH Identity File Missing: /home/ubuntu/.ssh/fleet_ed25519`; run 2: stopped before it, the node was not reachable with the key |
+| `sky check ssh`, `sky gpus list --infra ssh` | ran in run 1, **no pool enabled** | `No infra to check/enabled`, `SSH Node Pools are not enabled` |
+| `sky launch --infra ssh/voltagegpu-vm ...` | **not executed** | run 1: `SSH Node Pool 'voltagegpu-vm' is not set up`; run 2: stopped before it |
 
-So SkyPilot is installed and sees the pool definition, but the node was never set up and no task ran.
-`in-vm-skypilot.sh` now writes the key in `$HOME`, appends `authorized_keys` with `sudo` and checks
-`ssh ubuntu@127.0.0.1` before `sky ssh up`; that version has not been run yet. The time `sky ssh up`
-and the first `sky launch` take on this VM is therefore unknown.
+So SkyPilot is installed and sees the pool definition, but the node was never set up and no task ran;
+the time `sky ssh up` and the first `sky launch` take on this VM is unknown. The cause of the last
+refusal is not verified; the most probable one is an `authorized_keys` without a final newline, so the
+appended key was glued to the last line. `in-vm-skypilot.sh` now adds the missing newline first, reads
+the GPU label from the node (`skypilot.co/accelerator`) before `sky launch`, and has not been run in
+that form. In the normal setup (SkyPilot on your machine, your registered key, the VM's public address)
+this self-loop key is not needed.
