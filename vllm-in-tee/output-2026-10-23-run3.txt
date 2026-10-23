@@ -1,0 +1,69 @@
+### in-vm-vllm.sh, third run, started detached on 2026-10-23 (times UTC)
+[13:47:27] == GPU as seen from the guest
+name, driver_version, memory.total [MiB], memory.used [MiB]
+NVIDIA RTX PRO 6000 Blackwell Server Edition, 595.71.05, 97887 MiB, 0 MiB
+    CC State                   : ON
+    Multi-GPU Mode             : None
+    CC GPUs Ready State        : Ready
+[13:47:27] == waiting for the vLLM install (vllm-install.done)
+[13:47:37] vLLM install exit 0
+[13:47:37] == C compiler for Triton's JIT
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+flashinfer-python                        0.7.0.post1
+openai                                   3.37.0
+torch                                    2.13.0
+transformers                             5.19.0
+triton                                   3.7.1
+vllm                                     0.32.0
+[13:47:58] == smoke test: PyTorch and Triton on the GPU (allocation, fp16 matmul, pinned host memory, a Triton kernel)
+torch 2.13.0+cu130 | cuda 13.0 | NVIDIA RTX PRO 6000 Blackwell Server Edition | capability (12, 0)
+fp16 matmul 4096x4096: ok, 723.3 ms
+pinned host -> device, 256 MiB: ok, 76.5 ms (3.5 GB/s)
+triton 3.7.1 kernel: ok, sum = 2048.0
+[13:48:11] == attempt 1: vllm serve Qwen/Qwen2.5-0.5B-Instruct  
+[13:51:53] attempt 1: server answering after 266 s of this script
+[13:51:53] == startup facts from the server log (attempt 1, Qwen/Qwen2.5-0.5B-Instruct)
+INFO 10-23 13:48:40 [model.py:2152] Using max model len 2048
+(EngineCore pid=12324) INFO 10-23 13:48:51 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='Qwen/Qwen2.5-0.5B-Instruct', speculative_config=None, tokenizer='Qwen/Qwen2.5-0.5B-Instruct', skip_token
+(EngineCore pid=12324) INFO 10-23 13:48:57 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_7e17db48760b4d88979b33586f25b477 backend=nccl
+(EngineCore pid=12324) INFO 10-23 13:48:57 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=12324) INFO 10-23 13:48:59 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=12324) INFO 10-23 13:49:03 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=12324) INFO 10-23 13:49:03 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=12324) INFO 10-23 13:49:09 [weight_utils.py:532] Time spent downloading weights for Qwen/Qwen2.5-0.5B-Instruct: 4.710299 seconds
+
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.31it/s]
+
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.31it/s]
+(EngineCore pid=12324) INFO 10-23 13:49:10 [default_loader.py:501] Loading weights took 0.80 seconds
+(EngineCore pid=12324) INFO 10-23 13:49:13 [model_runner.py:424] Model loading took 0.93 GiB memory and 13.965537 seconds
+(EngineCore pid=12324) INFO 10-23 13:49:13 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=12324) INFO 10-23 13:49:13 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=12324) INFO 10-23 13:49:17 [gpu_worker.py:759] Available KV cache memory: 26.3 GiB
+(EngineCore pid=12324) INFO 10-23 13:49:17 [kv_cache_utils.py:2327] GPU KV cache size: 2,298,544 tokens, Maximum concurrency for 2,048 tokens per request: 1122.34x
+(EngineCore pid=12324) INFO 10-23 13:50:29 [kernel_warmup.py:460] Using FlashInfer autotune cache file: /home/ubuntu/.cache/vllm/flashinfer_autotune_cache/0.7.0.post1/120f/cc7097fa327be87f1f859d0ed7374314db541d78c3b69d8a
+(EngineCore pid=12324) INFO 10-23 13:51:47 [gpu_worker.py:1034] Free memory on device (94.1/94.86 GiB) on startup. Desired GPU memory utilization is (0.3, 28.46 GiB). Actual usage is 1.84 GiB for consumed memory (weights
+INFO 10-23 13:51:50 [entry.py:140] Starting vLLM server on http://127.0.0.1:8000
+[13:51:53] == GET /v1/models
+[('Qwen/Qwen2.5-0.5B-Instruct', 2048)]
+[13:51:53] == POST /v1/chat/completions with curl (Qwen/Qwen2.5-0.5B-Instruct)
+{"id":"chatcmpl-a50af2ed9bf50bf4","object":"chat.completion","created":1792763513,"model":"Qwen/Qwen2.5-0.5B-Instruct","choices":[{"index":0,"message":{"role":"assistant","content":"————————————————————————————————————————","refusal":null,"annotations":null,"audio":null,"function_call":null,"reasoning":null},"logprobs":null,"finish_reason":"length","stop_reason":null,"token_ids":null,"routed_experts":null}],"service_tier":null,"system_fingerprint":"vllm-0.32.0-36a9849b","usage":{"prompt_tokens":39,"total_tokens":79,"completion_tokens":40,"prompt_tokens_details":null,"completion_tokens_details":null},"prompt_logprobs":null,"prompt_token_ids":null,"prompt_text":null,"kv_transfer_params":null,"ec_transfer_params":null,"metrics":null}
+
+[13:52:40] == POST /v1/chat/completions with stream: true (first chunks)
+data: {"id":"chatcmpl-8d6c3ad15ab3fd87","object":"chat.completion.chunk","created":1792763560,"model":"Qwen/Qwen2.5-0.5B-Instruct","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}],"prompt_token_ids":null,"prompt_text":null}
+
+data: {"id":"chatcmpl-8d6c3ad15ab3fd87","object":"chat.completion.chunk","created":1792763560,"model":"Qwen/Qwen2.5-0.5B-Instruct","choices":[{"index":0,"delta":{"content":"editor"},"logprobs":null,"finish_reason":null,"token_ids":null}]}
+
+data: {"id":"chatcmpl-8d6c3ad15ab3fd87","object":"chat.completion.chunk","created":1792763560,"model":"Qwen/Qwen2.5-0.5B-Instruct","choices":[{"index":0,"delta":{"content":"editor"},"logprobs":null,"finish_reason":null,"token_ids":null}]}
+
+[13:52:41] == the openai SDK against the local server
+editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor editor
+usage: 37 prompt + 30 completion tokens
+[13:52:43] == GPU memory while serving
+29910 MiB, 97887 MiB
+[13:52:48] == vLLM stopped after 321 s
+
+--- exit code ---
+0

@@ -1,4 +1,4 @@
-# vLLM inside a Confidential VM (runs, but the output is not correct yet)
+# vLLM inside a Confidential VM (the server runs, the generated text is not correct)
 
 Goal: serve a small model with vLLM's OpenAI-compatible server **inside** the Intel TDX guest, bound to
 `127.0.0.1:8000`, and query it from inside the guest with curl and the openai SDK. The VM is the one
@@ -19,10 +19,29 @@ it fails (and retries with settings chosen from that log), then calls `/v1/model
 
 ## Status on 2026-10-23
 
-**The server starts and answers the OpenAI-compatible API, but the text it generated was only
-whitespace. That is not a correct answer from this model, so this is not a working recipe yet.** The
-cause is not known; nothing below says whether it comes from the confidential-computing mode, from a
-kernel on this GPU generation (compute capability 12.0) or from this vLLM version.
+**The server starts and answers the OpenAI-compatible API, but in both runs that reached a running
+server the generated text was degenerate: 40 spaces (second run), then 40 em dashes and
+"editor editor editor ..." (third run). That is not a correct answer from this model, so this is not
+a working recipe yet.** The cause is not known; nothing here says whether it comes from the
+confidential-computing mode, from a kernel on this GPU generation (compute capability 12.0) or from
+this vLLM version. The PyTorch and Triton smoke test before it gave correct results both times.
+
+### Third run (13:47 to 13:52 UTC), unedited log in [`output-2026-10-23-run3.txt`](output-2026-10-23-run3.txt)
+
+Same model, `--gpu-memory-utilization 0.30 --max-model-len 2048 --enforce-eager`. Started in parallel
+with the dstack and SkyPilot scripts, which stopped within 20 seconds (see their READMEs), so vLLM had
+the VM to itself.
+
+| Step | Status | Evidence |
+|---|---|---|
+| vLLM venv, gcc, smoke test | executed | same versions as the second run; fp16 matmul ok, pinned host to device 256 MiB ok, Triton kernel `sum = 2048.0` |
+| `vllm serve` | executed, answering after 222 s | `FLASH_ATTN` (FlashAttention 2), FlashInfer sampler, `Available KV cache memory: 26.3 GiB` |
+| `GET /v1/models` | executed | `[('Qwen/Qwen2.5-0.5B-Instruct', 2048)]` |
+| `POST /v1/chat/completions` (curl, `temperature: 0`) | executed, **wrong output** | `"content":"————————————————————————————————————————"` (40 em dashes), `finish_reason: length`, 39 prompt and 40 completion tokens, answer after 47 s |
+| Streaming | executed, **wrong output** | chunks `"content":"editor"` |
+| openai SDK | executed, **wrong output** | `editor` repeated 30 times, `usage: 37 prompt + 30 completion tokens` |
+| GPU memory while serving | executed | `29910 MiB, 97887 MiB` |
+| Second model, `TinyLlama/TinyLlama-1.1B-Chat-v1.0 --dtype float16` | **not executed** | the script switched models only on a *blank* answer, and the dashes were not blank; and 206 s of budget remained, less than one vLLM start measured that day (191 s, 222 s) |
 
 ### Second run (13:26 to 13:31 UTC), unedited log in [`output-2026-10-23-run2.txt`](output-2026-10-23-run2.txt)
 
@@ -58,7 +77,9 @@ compiler is therefore the likely cause of the first failure, not a proven one.
 
 ### Next run (prepared, not executed)
 
-`in-vm-vllm.sh` now checks the generated text: on a blank answer it restarts the server once with
-`VLLM_USE_FLASHINFER_SAMPLER=0 VLLM_ATTENTION_BACKEND=TRITON_ATTN` and asks again, to tell whether
-those kernels are involved. Comparing with the same model on a GPU outside confidential-computing mode
-would separate the two remaining explanations. Neither has been run.
+`in-vm-vllm.sh` now flags a *degenerate* answer (blank, or one or two words or characters repeated;
+checked locally on the three outputs above), then restarts once with
+`TinyLlama/TinyLlama-1.1B-Chat-v1.0 --dtype float16`, and if that is degenerate too, once more with
+`VLLM_USE_FLASHINFER_SAMPLER=0 VLLM_ATTENTION_BACKEND=TRITON_ATTN`. That needs about ten minutes of VM
+for the three starts. Comparing with the same model on a GPU outside confidential-computing mode would
+separate the remaining explanations. None of this has been run.

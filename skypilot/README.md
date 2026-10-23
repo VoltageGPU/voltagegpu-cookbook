@@ -50,7 +50,7 @@ sky ssh down               # removes the SkyPilot runtime from the node
 
 The VM keeps billing while it exists: release it through the API or the dashboard when done.
 
-## Executed on 2026-10-23: two runs, node pool and task not executed
+## Executed on 2026-10-23: three runs, node pool and task not executed
 
 To stay within one rented VM per run, SkyPilot ran *inside* the VM and the pool pointed at
 `127.0.0.1`. Versions: skypilot 0.14.1, kubectl v1.37.1. Unedited logs:
@@ -67,10 +67,38 @@ To stay within one rented VM per run, SkyPilot ran *inside* the VM and the pool 
 | `sky check ssh`, `sky gpus list --infra ssh` | ran in run 1, **no pool enabled** | `No infra to check/enabled`, `SSH Node Pools are not enabled` |
 | `sky launch --infra ssh/voltagegpu-vm ...` | **not executed** | run 1: `SSH Node Pool 'voltagegpu-vm' is not set up`; run 2: stopped before it |
 
-So SkyPilot is installed and sees the pool definition, but the node was never set up and no task ran;
-the time `sky ssh up` and the first `sky launch` take on this VM is unknown. The cause of the last
-refusal is not verified; the most probable one is an `authorized_keys` without a final newline, so the
-appended key was glued to the last line. `in-vm-skypilot.sh` now adds the missing newline first, reads
-the GPU label from the node (`skypilot.co/accelerator`) before `sky launch`, and has not been run in
-that form. In the normal setup (SkyPilot on your machine, your registered key, the VM's public address)
-this self-loop key is not needed.
+### Third run (13:47 UTC): the self-loop SSH works, then a bug in the test script
+
+Log: [`output-2026-10-23-run3.txt`](output-2026-10-23-run3.txt). `../deploy-confidential-vm-api/in-vm-selfssh.sh`
+ran first, with diagnostics:
+
+```text
+drwxr-xr-x 2 root   root   4096 Oct 23 13:45 /home/ubuntu/.ssh
+-rw------- 1 ubuntu ubuntu  387 Oct 23 13:45 /home/ubuntu/.ssh/authorized_keys
+authorized_keys: 3 line(s), last byte:   3
+   authorizedkeyscommand none
+   authorizedkeysfile .ssh/authorized_keys .ssh/authorized_keys2
+[13:47:13] == 1. ~/.ssh owned by ubuntu (700), authorized_keys owned by ubuntu (600), content kept
+[13:47:13] /home/ubuntu/.ssh/authorized_keys does not end with a newline: adding one first
+[13:47:13] key appended to /home/ubuntu/.ssh/authorized_keys
+   connected
+   passwordless-sudo
+[13:47:13] ssh -o BatchMode=yes -i fleet_ed25519 ubuntu@127.0.0.1 (port 22, ~/.ssh/authorized_keys): OK
+```
+
+So the refusal of the second run is explained: `authorized_keys` on this image ends without a newline
+(its last byte is the end of a key comment), and a key appended with `cat >>` or `tee -a` is glued to
+the last line. With a newline added first, `ssh ubuntu@127.0.0.1` and passwordless `sudo` work.
+
+Then the script stopped right after that OK line, without writing `selfssh.env`. The cause is mine:
+the script was fed to `bash -s` over stdin, and the `ssh` of the test, run without `-n`, read the rest
+of the script from that same stdin. The tests below it saw no `selfssh.env` and stopped
+(`NOT EXECUTED: ... the VM could not reach itself over SSH`). Fixed since (`ssh -n ... </dev/null`
+everywhere), not rerun: this was the last VM of the budget.
+
+**Status.** Proven: SkyPilot and kubectl install, the pool definition is read, the node meets the
+prerequisites listed above, and the VM can be reached over SSH as `ubuntu` with passwordless `sudo`
+once a key is added correctly. Not executed: `sky ssh up` and `sky launch` (k3s on the node, GPU labelling, a
+task), because of the test-script bug above; the time they take on this VM is unknown. In the normal
+setup (SkyPilot on your machine, your registered key, the VM's public address) the self-loop key is not
+needed.

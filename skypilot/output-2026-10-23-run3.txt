@@ -1,0 +1,34 @@
+### third run, 2026-10-23 (times UTC). in-vm-selfssh.sh, run before over SSH:
+[13:47:13] == diagnostics before any change
+drwxr-x--- 9 ubuntu ubuntu 4096 Oct 23 13:47 /home/ubuntu
+drwxr-xr-x 2 root   root   4096 Oct 23 13:45 /home/ubuntu/.ssh
+-rw------- 1 ubuntu ubuntu  387 Oct 23 13:45 /home/ubuntu/.ssh/authorized_keys
+authorized_keys: 3 line(s), last byte:   3
+sshd -T for a loopback login (user=ubuntu, addr=127.0.0.1):
+   port 22
+   listenaddress [::]:22
+   listenaddress 0.0.0.0:22
+   usepam yes
+   pubkeyauthentication yes
+   strictmodes yes
+   allowtcpforwarding yes
+   authorizedkeyscommand none
+   authorizedkeyscommanduser none
+   authorizedkeysfile .ssh/authorized_keys .ssh/authorized_keys2
+Match blocks and AuthorizedKeys lines in the sshd configuration:
+[13:47:13] == 1. ~/.ssh owned by ubuntu (700), authorized_keys owned by ubuntu (600), content kept
+drwx------ 2 ubuntu ubuntu 4096 Oct 23 13:45 /home/ubuntu/.ssh
+-rw------- 1 ubuntu ubuntu  387 Oct 23 13:47 /home/ubuntu/.ssh/authorized_keys
+256 SHA256:WMvMPRoJUKdLtkRYkK6ecHgOVvR0rY8axfYo/lH/uNc selfloop (ED25519)
+[13:47:13] /home/ubuntu/.ssh/authorized_keys does not end with a newline: adding one first
+[13:47:13] key appended to /home/ubuntu/.ssh/authorized_keys
+   Warning: Permanently added '127.0.0.1' (ED25519) to the list of known hosts.
+   connected
+   passwordless-sudo
+[13:47:13] ssh -o BatchMode=yes -i fleet_ed25519 ubuntu@127.0.0.1 (port 22, ~/.ssh/authorized_keys): OK
+
+### in-vm-skypilot.sh, started detached:
+[13:47:24] NOT EXECUTED: sky ssh up and sky launch (the VM could not reach itself over SSH, see in-vm-selfssh.log)
+
+--- exit code ---
+1

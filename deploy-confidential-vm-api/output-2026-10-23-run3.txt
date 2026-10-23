@@ -1,0 +1,65 @@
+### python deploy_and_attest.py --run --sku rtx6000b-small --max-minutes 16 --soft-minutes 14 --reserve-seconds 45 --no-attest --ssh-key <key> --pre-script in-vm-prepare.sh --pre-script in-vm-selfssh.sh --background-script ../dstack-ssh-fleet/in-vm-dstack.sh --background-script ../skypilot/in-vm-skypilot.sh --background-script ../vllm-in-tee/in-vm-vllm.sh
+### third run, Windows 11, Python 3.12.4; 2026-10-23, local times (UTC+2)
+15:44:27 balance 8.93 $, rtx6000b-small 3.8 $/h, 8 available, attestation verified 2026-10-09, voltage-verify 0.2.3, 0 confidential VM running
+15:44:28 SSH key: registered (id cmvl0ucmn000al6083q4f1fck)
+15:44:28 POST /api/volt/pods {"provider": "confidential", "name": "cookbook-20261023", "resource_name": "rtx6000b-small", "hardstop_hours": 1}
+15:44:47    HTTP 200: pod cmvl0urbf000hl8081tb5oxqp, workload wrk-dq848i8yxl5r, 3.8 $/h, site hard stop at 2026-10-23T14:44:47.453Z, sudo password: returned once, not logged
+15:45:02    34 s  provider_status provisioning  ssh_ready False
+15:45:18    50 s  provider_status provisioning  ssh_ready False
+15:45:34    66 s  provider_status provisioning  ssh_ready False
+15:45:49    81 s  provider_status provisioning  ssh_ready False
+15:46:05    97 s  provider_status provisioning  ssh_ready False
+15:46:21    112 s  provider_status provisioning  ssh_ready False
+15:46:36    128 s  provider_status provisioning  ssh_ready False
+15:46:52    144 s  provider_status provisioning  ssh_ready False
+15:47:08    159 s  provider_status running  ssh_ready True
+15:47:10    ssh up after 162 s (<ip>:20007)
+15:47:10    >> in-vm-prepare.sh (budget 120 s)
+15:47:13    << in-vm-prepare.sh exit 0, 4 lines, last: [13:47:12] background jobs started: vllm-install, host-install, dstack-install, sky-install (logs: *
+15:47:13    >> in-vm-selfssh.sh (budget 120 s)
+15:47:14    << in-vm-selfssh.sh exit 0, 27 lines, last: [13:47:13] ssh -o BatchMode=yes -i fleet_ed25519 ubuntu@127.0.0.1 (port 22, ~/.ssh/authorized_keys):
+15:47:16    nvidia-smi exit 0: Fri Oct 23 13:47:15 2026       
+15:47:16    attestation skipped (--no-attest)
+15:47:20    background: in-vm-dstack.sh started (budget 534 s)
+15:47:23    background: in-vm-skypilot.sh started (budget 530 s)
+15:47:27    background: in-vm-vllm.sh started (budget 527 s)
+15:47:43    background in-vm-dstack finished after 195 s of VM time
+15:47:43    background in-vm-skypilot finished after 195 s of VM time
+15:52:58    background in-vm-vllm finished after 510 s of VM time
+15:52:59    in-vm-dstack: finished
+15:53:01    in-vm-skypilot: finished
+15:53:02    in-vm-vllm: finished
+15:53:04    POST /api/volt/pods/{id}/stop -> HTTP 200
+15:53:04 VM stop via stop after 516 s of VM time; confirming through GET /api/volt/pods
+15:53:05    no longer listed
+15:53:08 billing: balance 8.9309 -> 8.4009 $, net cost 0.53 $ for 516 s at 3.8 $/h (one hour prepaid at deploy, unused seconds refunded)
+orchestrator exit 0
+
+### in-vm-selfssh.sh (times UTC)
+[13:47:13] == diagnostics before any change
+drwxr-x--- 9 ubuntu ubuntu 4096 Oct 23 13:47 /home/ubuntu
+drwxr-xr-x 2 root   root   4096 Oct 23 13:45 /home/ubuntu/.ssh
+-rw------- 1 ubuntu ubuntu  387 Oct 23 13:45 /home/ubuntu/.ssh/authorized_keys
+authorized_keys: 3 line(s), last byte:   3
+sshd -T for a loopback login (user=ubuntu, addr=127.0.0.1):
+   port 22
+   listenaddress [::]:22
+   listenaddress 0.0.0.0:22
+   usepam yes
+   pubkeyauthentication yes
+   strictmodes yes
+   allowtcpforwarding yes
+   authorizedkeyscommand none
+   authorizedkeyscommanduser none
+   authorizedkeysfile .ssh/authorized_keys .ssh/authorized_keys2
+Match blocks and AuthorizedKeys lines in the sshd configuration:
+[13:47:13] == 1. ~/.ssh owned by ubuntu (700), authorized_keys owned by ubuntu (600), content kept
+drwx------ 2 ubuntu ubuntu 4096 Oct 23 13:45 /home/ubuntu/.ssh
+-rw------- 1 ubuntu ubuntu  387 Oct 23 13:47 /home/ubuntu/.ssh/authorized_keys
+256 SHA256:WMvMPRoJUKdLtkRYkK6ecHgOVvR0rY8axfYo/lH/uNc selfloop (ED25519)
+[13:47:13] /home/ubuntu/.ssh/authorized_keys does not end with a newline: adding one first
+[13:47:13] key appended to /home/ubuntu/.ssh/authorized_keys
+   Warning: Permanently added '127.0.0.1' (ED25519) to the list of known hosts.
+   connected
+   passwordless-sudo
+[13:47:13] ssh -o BatchMode=yes -i fleet_ed25519 ubuntu@127.0.0.1 (port 22, ~/.ssh/authorized_keys): OK

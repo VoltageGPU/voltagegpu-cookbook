@@ -7,7 +7,8 @@
 #   host-install   gcc + Python headers (cc.done, Triton's JIT needs them), then
 #                  Docker + NVIDIA Container Toolkit (dstack SSH fleets and SkyPilot node pools both
 #                  run workloads in containers with GPU access), socat and netcat for SkyPilot
-#   tools-install  dstack and SkyPilot CLIs in their own venvs, kubectl (SkyPilot needs it)
+#   dstack-install dstack CLI and server in its own venv
+#   sky-install    SkyPilot CLI in its own venv, kubectl (SkyPilot needs it)
 set -uo pipefail
 cd "$HOME"
 exec > >(tee -a prepare.log) 2>&1
@@ -42,11 +43,14 @@ uv --version
 { ( set -e
     uv venv -q "$HOME/dstack-venv"
     uv pip install -q --python "$HOME/dstack-venv/bin/python" "dstack[all]"
+    echo 0 > dstack-install.done ) > dstack-install.log 2>&1 || echo 1 > dstack-install.done; } </dev/null >/dev/null 2>&1 &
+
+{ ( set -e
     uv venv -q "$HOME/sky-venv"
     uv pip install -q --python "$HOME/sky-venv/bin/python" "skypilot[kubernetes]"
     curl -sLO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
     sudo install -m 0755 kubectl /usr/local/bin/kubectl
-    echo 0 > tools-install.done ) > tools-install.log 2>&1 || echo 1 > tools-install.done; } </dev/null >/dev/null 2>&1 &
+    echo 0 > sky-install.done ) > sky-install.log 2>&1 || echo 1 > sky-install.done; } </dev/null >/dev/null 2>&1 &
 
 disown -a
-echo "[$(date -u +%H:%M:%S)] background jobs started: vllm-install, host-install, tools-install (logs: *-install.log)"
+echo "[$(date -u +%H:%M:%S)] background jobs started: vllm-install, host-install, dstack-install, sky-install (logs: *-install.log)"

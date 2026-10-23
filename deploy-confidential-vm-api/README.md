@@ -15,7 +15,8 @@
    64-hex **challenge drawn on your machine**, so an old bundle cannot be replayed; the bundle,
    manifest and checksums are copied out over SSH.
 5. Optional extra scripts (`--pre-script`, `--script path[:seconds]` run in order with a time cap,
-   `--background-script`): this is how
+   `--background-script` started detached and collected at the end; `--no-attest` skips step 4's
+   attestation, `--soft-minutes` and `--reserve-seconds` tune the deadlines for short runs): this is how
    `../vllm-in-tee`, `../dstack-ssh-fleet` and `../skypilot` ran on the same VM.
 6. **`finally`**: `POST /api/volt/pods/{id}/stop` (retried, `DELETE` as fallback), confirmed by the
    VM disappearing from `GET /api/volt/pods`; a watchdog does the same at `--max-minutes - 5`; every
@@ -161,15 +162,26 @@ Ledger of the account: 3.80 $ charged at deploy, 3.30 $ refunded at release, **0
 bundle of this second run verified the same way (fresh challenge, `RESULT: VERIFIED`); it is not added
 to the repository, the first one already shows it.
 
+### Third run, same day (13:44 to 13:53 UTC)
+
+`--no-attest --max-minutes 16 --soft-minutes 14 --reserve-seconds 45`, with `in-vm-selfssh.sh` as a
+second pre-script and the three other examples as background scripts. Unedited output in
+[`output-2026-10-23-run3.txt`](output-2026-10-23-run3.txt): SSH after 162 s, the VM stopped at 516 s
+(`POST /stop` 200, no longer listed), ledger 3.80 $ charged and 3.27 $ refunded, **0.53 $ net**. What
+the scripts did is in `../vllm-in-tee`, `../dstack-ssh-fleet` and `../skypilot`.
+
 ### Observed on this image, useful before you script against it
 
 * `pip` is not on the image; the published script installs it with `get-pip.py` (and `uv` installs
   in two seconds, see `in-vm-prepare.sh`).
-* `~/.ssh` belongs to root on this image (`drwxr-xr-x root root /home/ubuntu/.ssh`, seen on the
-  second run), while `authorized_keys` belongs to `ubuntu` (mode 600). So `ssh-keygen -f ~/.ssh/<name>`
-  as `ubuntu` fails with `Permission denied`; write new keys elsewhere. A key appended to
-  `authorized_keys` with `sudo tee -a` was then refused for `ssh ubuntu@127.0.0.1`; the probable cause
-  (a file without a final newline) is not verified, see `../dstack-ssh-fleet`.
+* `~/.ssh` belongs to root on this image (`drwxr-xr-x root root /home/ubuntu/.ssh`, seen on the second
+  and third runs), while `authorized_keys` belongs to `ubuntu` (mode 600). So `ssh-keygen -f ~/.ssh/<name>`
+  as `ubuntu` fails with `Permission denied`, and so does anything that writes `~/.ssh/known_hosts` or
+  `~/.ssh/config`. `sudo chown ubuntu:ubuntu ~/.ssh && chmod 700 ~/.ssh` fixes it.
+* `authorized_keys` ends without a final newline (seen on the third run: its last byte is the end of a
+  key comment). A key added with `cat key.pub >> ~/.ssh/authorized_keys` is glued to the last line and
+  is not accepted; add a newline first. With that, a second key worked at once
+  (`in-vm-selfssh.sh`).
 * Without gcc and the Python headers (absent from the image), Triton cannot build its launcher; install
   `build-essential python3-dev` before anything that runs Triton kernels (vLLM does).
 * Passwordless `sudo` works for `ubuntu`; outbound HTTPS, PyPI, Docker Hub and apt mirrors were

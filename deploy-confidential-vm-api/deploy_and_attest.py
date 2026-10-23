@@ -176,7 +176,10 @@ class Run:
         self.stopped: dict | None = None
         self.lock = threading.Lock()
         self.max_s = args.max_minutes * 60
-        self.soft_s = self.max_s - 5 * 60  # watchdog; every wait ends 90 s before it
+        # Watchdog time (default: cap - 5 min, room for the stop retries); every wait ends 90 s before it.
+        self.soft_s = args.soft_minutes * 60 if args.soft_minutes else self.max_s - 5 * 60
+        # Seconds kept after the extra scripts for collecting their logs and stopping the VM.
+        self.reserve = args.reserve_seconds
 
     def left(self) -> float:
         return max(0.0, self.deployed_at + self.soft_s - 90 - time.time())
@@ -261,7 +264,7 @@ class Run:
         """Copies a script into the VM and starts it detached; <stem>.done holds its exit code at the end."""
         script = path.read_text(encoding="utf-8").replace("\r\n", "\n")
         target.run(f"cat > {path.name}", stdin=script, timeout=30)
-        budget = int(self.left() - 150)
+        budget = int(self.left() - self.reserve)
         cmd = (f"nohup bash -c 'BUDGET_SECONDS={budget} bash {path.name} > {path.stem}.log 2>&1; "
                f"echo $? > {path.stem}.done' </dev/null >/dev/null 2>&1 & echo started")
         r = target.run(cmd, timeout=30)
@@ -270,7 +273,7 @@ class Run:
     def collect_background(self, target: Target, paths: list[pathlib.Path]) -> None:
         """Waits for the detached scripts until the deadline nears, then copies their logs out."""
         pending = {p.stem for p in paths}
-        while pending and self.left() > 150:
+        while pending and self.left() > max(15, self.reserve - 60):
             time.sleep(15)
             r = target.run(" ".join(f"test -f {s}.done && echo {s};" for s in pending), timeout=30)
             for stem in r.stdout.decode().split():
@@ -290,6 +293,26 @@ class Run:
                        timeout=min(60, self.left()))
         (self.dir / "nvidia-smi.txt").write_bytes(r.stdout + r.stderr)
         log(f"   nvidia-smi exit {r.returncode}: {r.stdout.decode(errors='replace').splitlines()[0] if r.stdout else ''}")
+        if self.args.no_attest:
+            log("   attestation skipped (--no-attest)")
+        else:
+            self.attest(target, challenge)
+        background = [pathlib.Path(s) for s in self.args.background_script]
+        for p in background:
+            self.start_background(target, p)
+        for spec in self.args.script:
+            path, cap = split_cap(spec)
+            if self.left() < self.reserve + 150:
+                log(f"   {path.name}: NOT EXECUTED, {int(self.left())} s left before the deadline")
+                continue
+            # At most its own cap, and always the reserve (plus 90 s) kept to collect logs and stop the VM.
+            budget = min(cap, self.left() - self.reserve - 90)
+            self.run_script(target, path, {"BUDGET_SECONDS": str(int(budget))}, budget)
+        if background:
+            self.collect_background(target, background)
+
+    def attest(self, target: Target, challenge: str) -> None:
+        """The published two-proofs script on a challenge drawn here, then the bundle copied out."""
         with urllib.request.urlopen(VM_SCRIPT_URL, timeout=60) as resp:
             script = resp.read().decode().replace("\r\n", "\n")
         (self.dir / "two-proofs-in-the-vm.sh").write_text(script, newline="\n")
@@ -300,19 +323,6 @@ class Run:
         log(f"   two-proofs exit {r.returncode}, last line: {r.stdout.decode(errors='replace').strip().splitlines()[-1:]}")
         self.copy_out(target, ["manifest.json", "bundle.json", "SHA256SUMS"])
         log(f"   bundle copied out after {int(time.time() - self.deployed_at)} s")
-        background = [pathlib.Path(s) for s in self.args.background_script]
-        for p in background:
-            self.start_background(target, p)
-        for spec in self.args.script:
-            path, cap = split_cap(spec)
-            if self.left() < 300:
-                log(f"   {path.name}: NOT EXECUTED, {int(self.left())} s left before the deadline")
-                continue
-            # At most its own cap, and always four minutes kept to collect logs and stop the VM.
-            budget = min(cap, self.left() - 240)
-            self.run_script(target, path, {"BUDGET_SECONDS": str(int(budget))}, budget)
-        if background:
-            self.collect_background(target, background)
 
     def verify_offline(self, challenge: str) -> None:
         sums = {l.split()[1]: l.split()[0] for l in (self.dir / "SHA256SUMS").read_text().splitlines() if l.strip()}
@@ -365,7 +375,8 @@ class Run:
             log(f"billing: balance {self.facts['balance_before']:.4f} -> {after} $, net cost {cost} $ "
                 f"for {vm_s} s at {self.facts['price']} $/h (one hour prepaid at deploy, unused seconds refunded)")
             self.save(vmSeconds=vm_s, balanceAfter=after, netCost=cost, gone=gone, challenge=challenge)
-        self.verify_offline(challenge)
+        if not self.args.no_attest:
+            self.verify_offline(challenge)
         return 0
 
 
@@ -399,7 +410,10 @@ def parse() -> argparse.Namespace:
     mode.add_argument("--reap", action="store_true", help="stop a VM a killed run left behind")
     p.add_argument("--sku", default="rtx6000b-small")
     p.add_argument("--ssh-key", help="private key; <key>.pub is registered on the account if needed")
-    p.add_argument("--max-minutes", type=int, default=30, help="hard cap on VM lifetime (watchdog at cap - 5)")
+    p.add_argument("--max-minutes", type=int, default=30, help="hard cap on VM lifetime (watchdog at cap - 5 by default)")
+    p.add_argument("--soft-minutes", type=float, help="watchdog time, when to stop the VM in any case (default: cap - 5)")
+    p.add_argument("--reserve-seconds", type=int, default=150, help="kept after the extra scripts to collect logs and stop")
+    p.add_argument("--no-attest", action="store_true", help="skip the two-proofs attestation (for runs about other scripts)")
     p.add_argument("--pre-script", action="append", default=[], help="bash script run in the VM before the attestation")
     p.add_argument("--script", action="append", default=[],
                    help="bash script run in the VM after the bundle is copied out, in order; path:seconds caps its time")
@@ -410,6 +424,10 @@ def parse() -> argparse.Namespace:
         p.error("--run needs --ssh-key")
     if a.max_minutes < 10 or a.max_minutes > 60:
         p.error("--max-minutes between 10 and 60")
+    if a.soft_minutes is not None and not (8 <= a.soft_minutes <= a.max_minutes - 1):
+        p.error("--soft-minutes between 8 and --max-minutes - 1")
+    if not 30 <= a.reserve_seconds <= 600:
+        p.error("--reserve-seconds between 30 and 600")
     return a
 
 

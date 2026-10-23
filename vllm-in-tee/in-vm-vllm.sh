@@ -17,6 +17,9 @@ START=$(date +%s)
 left() { echo $(( BUDGET - ($(date +%s) - START) )); }
 log() { echo "[$(date -u +%H:%M:%S)] $*"; }
 MODEL=Qwen/Qwen2.5-0.5B-Instruct
+# Second model if the first one answers blank: another architecture, 1.1B parameters, not gated.
+ALT_MODEL=TinyLlama/TinyLlama-1.1B-Chat-v1.0
+EXTRA_ARGS=""
 PORT=8000
 
 log "== GPU as seen from the guest"
@@ -82,9 +85,11 @@ python smoke.py 2>&1 | tail -15
 VLLM_PID=""
 serve() {  # serve <attempt> [VAR=value ...]
   local n=$1; shift
-  log "== attempt $n: vllm serve $MODEL ${*:+with $*}"
-  env "$@" nohup vllm serve "$MODEL" --host 127.0.0.1 --port $PORT --max-model-len 4096 \
-    --gpu-memory-utilization 0.60 --enforce-eager > "vllm-serve-$n.log" 2>&1 </dev/null &
+  log "== attempt $n: vllm serve $MODEL $EXTRA_ARGS ${*:+with $*}"
+  # 0.30 of the GPU memory: the dstack and SkyPilot tests may run on the same GPU at the same time.
+  # shellcheck disable=SC2086
+  env "$@" nohup vllm serve "$MODEL" --host 127.0.0.1 --port $PORT --max-model-len 2048 \
+    --gpu-memory-utilization 0.30 --enforce-eager $EXTRA_ARGS > "vllm-serve-$n.log" 2>&1 </dev/null &
   VLLM_PID=$!
   until curl -sf "http://127.0.0.1:$PORT/v1/models" >/dev/null 2>&1; do
     if ! kill -0 "$VLLM_PID" 2>/dev/null; then
@@ -125,35 +130,54 @@ if [ -z "$UP" ]; then
   exit 1
 fi
 
-log "== startup facts from the server log (attempt $UP)"
-grep -E "Loading|loading took|weights|KV cache|backend|Using|Maximum concurrency|Starting vLLM|device" "vllm-serve-$UP.log" \
-  | sed -E 's/^\(APIServer pid=[0-9]+\) //' | cut -c1-220 | head -25
+facts() {  # facts <attempt>: what vLLM reported while starting
+  log "== startup facts from the server log (attempt $1, $MODEL)"
+  grep -E "Loading|loading took|weights|KV cache|backend|Using|Maximum concurrency|Starting vLLM|dtype" "vllm-serve-$1.log"     | sed -E 's/^\(APIServer pid=[0-9]+\) //' | cut -c1-220 | head -25
+}
+facts "$UP"
 
 log "== GET /v1/models"
 curl -s "http://127.0.0.1:$PORT/v1/models" | python -c 'import sys,json; print([(m["id"], m.get("max_model_len")) for m in json.load(sys.stdin)["data"]])'
 
-ask() {  # one chat completion with curl; prints the answer, returns 1 when the generated text is blank
+ask() {  # one chat completion with curl; prints the answer, returns 1 when the generated text is degenerate
   local body
   body=$(curl -s "http://127.0.0.1:$PORT/v1/chat/completions" -H 'Content-Type: application/json' \
     -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello from a confidential VM in one sentence.\"}],\"max_tokens\":40,\"temperature\":0}")
   echo "$body"
-  echo "$body" | python -c 'import sys,json; c=json.load(sys.stdin)["choices"][0]["message"]["content"] or ""; sys.exit(0 if c.strip() else 1)'
+  # Degenerate = blank, or the same one or two words or characters repeated (2026-10-23: 40 spaces, then
+  # forty dashes and "editor editor ..."). The third run only caught blank answers and missed the dashes.
+  echo "$body" | python -c '
+import sys, json
+c = (json.load(sys.stdin)["choices"][0]["message"]["content"] or "").strip()
+words = c.split()
+bad = not c or (len(words) >= 5 and len(set(words)) <= 2) or (len(c) >= 10 and len(set(c)) <= 2)
+print("answer check:", "DEGENERATE" if bad else "looks like text")
+sys.exit(1 if bad else 0)'
 }
-log "== POST /v1/chat/completions with curl"
+log "== POST /v1/chat/completions with curl ($MODEL)"
 if ! ask; then
-  # 2026-10-23, second run: the server answered with 40 spaces (greedy decoding), which is not a correct
-  # generation for this model; the cause was not verified. Next time, one restart without the FlashInfer
-  # sampler and with the Triton attention backend tells whether those kernels are involved.
-  log "BLANK ANSWER: the server ran but generated only whitespace, which is not a correct answer"
-  if [ "$(left)" -gt 240 ]; then
-    pkill -f "vllm serve"; sleep 5
-    if serve 4 VLLM_USE_FLASHINFER_SAMPLER=0 VLLM_ATTENTION_BACKEND=TRITON_ATTN; then
-      UP=4
-      log "== POST /v1/chat/completions with curl (attempt 4)"
-      ask || log "BLANK ANSWER again with VLLM_USE_FLASHINFER_SAMPLER=0 VLLM_ATTENTION_BACKEND=TRITON_ATTN"
+  # 2026-10-23, second run: 40 spaces at temperature 0 from Qwen2.5-0.5B-Instruct, not a correct answer.
+  log "DEGENERATE ANSWER from $MODEL: the server ran but the text is not a real answer"
+  pkill -f "vllm serve"; sleep 5
+  MODEL=$ALT_MODEL; EXTRA_ARGS="--dtype float16"
+  if [ "$(left)" -gt 240 ] && serve 4; then
+    UP=4
+    facts 4
+    log "== POST /v1/chat/completions with curl ($MODEL, float16)"
+    if ! ask; then
+      log "DEGENERATE ANSWER from $MODEL in float16 as well"
+      pkill -f "vllm serve"; sleep 5
+      if [ "$(left)" -gt 200 ] && serve 5 VLLM_USE_FLASHINFER_SAMPLER=0 VLLM_ATTENTION_BACKEND=TRITON_ATTN; then
+        UP=5
+        facts 5
+        log "== POST /v1/chat/completions with curl ($MODEL, float16, no FlashInfer sampler, Triton attention)"
+        ask || log "DEGENERATE ANSWER with the FlashInfer sampler off and Triton attention too"
+      else
+        log "NOT EXECUTED: restart without the FlashInfer sampler and with Triton attention ($(left) s left)"
+      fi
     fi
   else
-    log "NOT EXECUTED: restart with other kernels ($(left) s left)"
+    log "NOT EXECUTED: a second model ($ALT_MODEL, float16): $(left) s left or the server did not start"
   fi
 fi
 echo

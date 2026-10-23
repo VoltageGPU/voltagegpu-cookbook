@@ -67,12 +67,13 @@ dstack apply -f task.dstack.yml
 The VM keeps billing while it exists: release it through the API or the dashboard when the fleet is no
 longer needed (`dstack fleet delete` only removes dstack's record).
 
-## Executed on 2026-10-23: two runs, fleet and task not executed
+## Executed on 2026-10-23: three runs, fleet and task not executed
 
 To stay within one rented VM per run, the test ran the dstack server *inside* the VM and pointed the
 fleet at `127.0.0.1:22` (same mechanism, one machine fewer). Versions: dstack 0.22.5, Docker 29.9.2,
 NVIDIA Container Toolkit 1.20.1. Unedited logs: [`output-2026-10-23.txt`](output-2026-10-23.txt)
-(first run) and [`output-2026-10-23-run2.txt`](output-2026-10-23-run2.txt) (second run).
+(first run), [`output-2026-10-23-run2.txt`](output-2026-10-23-run2.txt) (second run) and
+[`output-2026-10-23-run3.txt`](output-2026-10-23-run3.txt) (third run).
 
 | Step | Status | Evidence |
 |---|---|---|
@@ -85,10 +86,38 @@ NVIDIA Container Toolkit 1.20.1. Unedited logs: [`output-2026-10-23.txt`](output
 | `dstack apply -f fleet.dstack.yml` | **not executed** | run 1: `Unable to read the SSH key at ~/.ssh/fleet_ed25519`; run 2: stopped before it, the host was not reachable with the key |
 | `dstack apply -f task.dstack.yml` | **not executed** | run 1: `The project has no fleets`; run 2: stopped before it |
 
-What is proven: the VM meets dstack's host requirements once Docker and the toolkit are installed (a
-container sees the GPU) and the server runs. What is not: the fleet registration and a job. The cause
-of the last refusal is not verified. The most probable one is that `authorized_keys`, written by the
-platform, does not end with a newline, so the appended key was glued to the last line.
-`in-vm-dstack.sh` now adds the missing newline first and says so in its output; that version has not
-been run. In the normal setup (dstack server on your machine, your registered key, the VM's public
-address) this self-loop key is not needed at all.
+### Third run (13:47 UTC): the self-loop SSH works, then a bug in the test script
+
+Log: [`output-2026-10-23-run3.txt`](output-2026-10-23-run3.txt). `../deploy-confidential-vm-api/in-vm-selfssh.sh`
+ran first, with diagnostics:
+
+```text
+drwxr-xr-x 2 root   root   4096 Oct 23 13:45 /home/ubuntu/.ssh
+-rw------- 1 ubuntu ubuntu  387 Oct 23 13:45 /home/ubuntu/.ssh/authorized_keys
+authorized_keys: 3 line(s), last byte:   3
+   authorizedkeyscommand none
+   authorizedkeysfile .ssh/authorized_keys .ssh/authorized_keys2
+[13:47:13] == 1. ~/.ssh owned by ubuntu (700), authorized_keys owned by ubuntu (600), content kept
+[13:47:13] /home/ubuntu/.ssh/authorized_keys does not end with a newline: adding one first
+[13:47:13] key appended to /home/ubuntu/.ssh/authorized_keys
+   connected
+   passwordless-sudo
+[13:47:13] ssh -o BatchMode=yes -i fleet_ed25519 ubuntu@127.0.0.1 (port 22, ~/.ssh/authorized_keys): OK
+```
+
+So the refusal of the second run is explained: `authorized_keys` on this image ends without a newline
+(its last byte is the end of a key comment), and a key appended with `cat >>` or `tee -a` is glued to
+the last line. With a newline added first, `ssh ubuntu@127.0.0.1` and passwordless `sudo` work.
+
+Then the script stopped right after that OK line, without writing `selfssh.env`. The cause is mine:
+the script was fed to `bash -s` over stdin, and the `ssh` of the test, run without `-n`, read the rest
+of the script from that same stdin. The tests below it saw no `selfssh.env` and stopped
+(`NOT EXECUTED: ... the VM could not reach itself over SSH`). Fixed since (`ssh -n ... </dev/null`
+everywhere), not rerun: this was the last VM of the budget.
+
+**Status.** Proven: the VM meets dstack's host requirements once Docker and the NVIDIA Container
+Toolkit are installed (a container sees the GPU, three runs), the dstack server runs, and the VM can be
+reached over SSH as `ubuntu` with passwordless `sudo` once a key is added correctly. Not executed:
+`dstack apply -f fleet.dstack.yml` and `dstack apply -f task.dstack.yml` (fleet registration and a job), because of the test-script bug above. In the normal setup
+(dstack server on your machine, your registered key, the VM's public address) the self-loop key is not
+needed at all.
